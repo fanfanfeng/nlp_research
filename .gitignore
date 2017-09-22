@@ -1,0 +1,9 @@
+.idea/
+.py*
+data/
+model/
+*test.py
+*-abk*
+__pycache__
+*-bak
+*attention*
