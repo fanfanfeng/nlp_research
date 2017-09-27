@@ -2,6 +2,7 @@
 .py*
 data/
 model/
+graph/
 *test.py
 *-abk*
 __pycache__
