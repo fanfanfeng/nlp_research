@@ -24,6 +24,7 @@ def train():
         print("开始训练")
         loss = 0.0
         start_time = time.time()
+        best_loss = 10000.0
         for epoch_id  in range(config.max_epochs):
             for step, train_batch in enumerate(tran_batch_manager.iterbatch()):
                 if train_batch['encode'] is None:
@@ -38,6 +39,12 @@ def train():
                 loss += float(step_loss) / config.display_freq
 
                 if (model_obj.global_step.eval() +1) % config.display_freq == 0:
+                    if loss < best_loss:
+                        best_loss = loss
+                        print("保存模型。。。。。。。")
+                        checkpoint_path = model_obj.mode_save_path
+                        model_obj.saver.save(sess, checkpoint_path, global_step=model_obj.global_step)
+
                     avg_perplexity = math.exp(float(loss)) if loss <300 else float("inf")
 
                     #计算时间
@@ -66,7 +73,7 @@ def train():
                     valid_loss = valid_loss /totoal_sentent
                     print("验证集上面的loss值为 %.2f, Preplexity值为 %.2f" %(valid_loss,math.exp(valid_loss)))
 
-                #保存模型
+
                 if (model_obj.global_step.eval()+1) % config.save_freq == 0:
                     print("保存模型。。。。。。。")
                     checkpoint_path = model_obj.mode_save_path

@@ -26,7 +26,7 @@ class Seq2SeqModel(object):
         #初始化embedding向量
         self._init_embeddings()
 
-        #构架训练网络
+        #构建网络
         self._build_network()
 
 
@@ -81,21 +81,21 @@ class Seq2SeqModel(object):
             # decoder_inputs_length: [batch_size]
             self.decoder_inputs_length = tf.placeholder(dtype=tf.int32,shape=(None,),name='decoder_inputs_length')
 
-        decoder_start_token = tf.ones(shape=[self.batch_size,1],dtype=tf.int32) * data_utils.GO_ID
-        decoder_end_token = tf.ones(shape=[self.batch_size,1],dtype=tf.int32) * data_utils.EOS_ID
+            decoder_start_token = tf.ones(shape=[self.batch_size,1],dtype=tf.int32) * data_utils.GO_ID
+            decoder_end_token = tf.ones(shape=[self.batch_size,1],dtype=tf.int32) * data_utils.EOS_ID
 
-        # decoder_inputs_train: [batch_size , max_time_steps + 1]
-        # insert _GO symbol in front of each decoder input
-        self.decoder_inputs_train = tf.concat([decoder_start_token,
-                                               self.decoder_inputs], axis=1)
+            # decoder_inputs_train: [batch_size , max_time_steps + 1]
+            # insert _GO symbol in front of each decoder input
+            self.decoder_inputs_train = tf.concat([decoder_start_token,
+                                                   self.decoder_inputs], axis=1)
 
-        # decoder_inputs_length_train: [batch_size]
-        self.decoder_inputs_length_train = self.decoder_inputs_length + 1
+            # decoder_inputs_length_train: [batch_size]
+            self.decoder_inputs_length_train = self.decoder_inputs_length + 1
 
-        # decoder_targets_train: [batch_size, max_time_steps + 1]
-        # insert EOS symbol at the end of each decoder input
-        self.decoder_targets_train = tf.concat([self.decoder_inputs,
-                                                decoder_end_token], axis=1)
+            # decoder_targets_train: [batch_size, max_time_steps + 1]
+            # insert EOS symbol at the end of each decoder input
+            self.decoder_targets_train = tf.concat([self.decoder_inputs,
+                                                    decoder_end_token], axis=1)
 
 
 
@@ -425,23 +425,38 @@ class Seq2SeqModel(object):
 
 
     #根据输入句子进行预测
-    def predict(self,sess,encoder_inputs,encoder_inputs_length):
+    def predict(self,sess,encoder_inputs,encoder_inputs_length,vocab_list):
         input_feed = self.make_feeds_dict(encoder_inputs,encoder_inputs_length,
                                           None,None,True)
-        input_feed[self.self.keep_prob_placeholder.name] = 1.0
-        output_feed = [self.decoder_pred_decode]
-        predicts = sess.run(input_feed,output_feed)
+        input_feed[self.keep_prob_placeholder.name] = 1.0
+        output_feed = self.decoder_pred_decode
+        predicts = sess.run(output_feed,input_feed)
 
-        return predicts[0]
+        outputs = []
+        # This is a greedy decoder - outputs are just argmaxes of output_logits.
+        print(predicts.shape)
+        for token in predicts[0]:
+            selected_token_id = int(token)
+            if selected_token_id == data_utils.EOS_ID or selected_token_id == data_utils.PAD_ID:
+                break
+            else:
+                outputs.append(selected_token_id)
+
+        # Forming output sentence on natural language
+        output_sentence = " ".join([vocab_list[output] for output in outputs])
+        return output_sentence
+
 
 
     #模型恢复或者初始化
     def model_restore(self,sess):
-        ckpt = tf.train.get_checkpoint_state(self.mode_save_path)
+        ckpt = tf.train.get_checkpoint_state(os.path.dirname(self.mode_save_path))
         if ckpt and ckpt.model_checkpoint_path:
+            print("restor model")
             self.saver.restore(sess,ckpt.model_checkpoint_path)
 
         else:
+            print("init model")
             sess.run(tf.global_variables_initializer())
 
 
