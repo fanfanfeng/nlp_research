@@ -107,7 +107,7 @@ class Model():
             self.inputs:inputs,
             self.dropout:1.0
         }
-
+        print(self.dropout.name)
         if is_train:
             feed_dict[self.labels] = labels
             feed_dict[self.dropout] = self.dropout_train
@@ -121,11 +121,14 @@ class Model():
             global_step ,loss,_ = sess.run(fetch_list,feed_dict)
             return global_step,loss
         else:
+            print(self.lengths.name)
+            print(self.logits.name)
             fetch_list= [self.lengths,self.logits]
             lengths,logits = sess.run(fetch_list,feed_dict)
             return lengths,logits
 
     def predict(self,sess,inputs):
+        print(self.trans.name)
         crf_trans_matrix = self.trans.eval()
         lengths,scores = self.run_step(sess,inputs,None,False)
         paths = []

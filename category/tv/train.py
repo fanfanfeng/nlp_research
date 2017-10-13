@@ -13,9 +13,10 @@ def train():
 
 
     graph = tf.Graph()
-    with graph.as_default(),tf.Session() as sess:
+    with graph.as_default() as g,tf.Session(graph=g) as sess:
         model = bi_lstm_model.Bi_lstm()
         print("初始化模型完成")
+
 
         graph_writer = tf.summary.FileWriter(classfication_setting.graph_model_bi_lstm, graph=sess.graph)
         tv_data = data_util.BatchManager(classfication_setting.tv_data_path, classfication_setting.batch_size)
@@ -28,6 +29,18 @@ def train():
             print("create model ")
             sess.run(tf.global_variables_initializer())
         #model.restore_model(sess)
+
+
+        #保存模型graph
+        tf.train.write_graph(sess.graph_def, classfication_setting.graph_model_bi_lstm, "classify.pb", False)
+
+        # 将权重固话到graph中去
+        output_tensor = []
+        output_tensor.append(model.logits.name.replace(":0",""))
+        output_graph_with_weight = tf.graph_util.convert_variables_to_constants(sess, sess.graph_def, output_tensor)
+        with tf.gfile.FastGFile(os.path.join(classfication_setting.graph_model_bi_lstm, "weight_classify.pb"),
+                                'wb') as gf:
+            gf.write(output_graph_with_weight.SerializeToString())
 
         for num_epoch in range(classfication_setting.num_epochs):
             print("epoch  {}".format(num_epoch +1))
@@ -53,6 +66,8 @@ def train():
                 if step % classfication_setting.checkpoint_every == 0:
                     path = model.saver.save(sess,classfication_setting.train_model_bi_lstm,step)
                     print("模型保存到{}".format(path))
+
+
 
 if __name__ == '__main__':
     train()

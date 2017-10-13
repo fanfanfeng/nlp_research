@@ -21,6 +21,16 @@ def train():
         model_obj = model.Seq2SeqModel('train')
         model_obj.model_restore(sess)
 
+
+        #outputTensors = []
+        #print(model_obj.decoder_pred_decode.name.replace(":0",""))
+        #outputTensors.append(model_obj.decoder_pred_decode.name.replace(":0",""))
+
+        #output_graph_with_weight = tf.graph_util.convert_variables_to_constants(sess,sess.graph_def,outputTensors)
+        #with tf.gfile.FastGFile(os.path.join(config.model_dir, "weight_seq2seq.pb"),
+        #                        'wb') as gf:
+        #    gf.write(output_graph_with_weight.SerializeToString())
+
         print("开始训练")
         loss = 0.0
         start_time = time.time()

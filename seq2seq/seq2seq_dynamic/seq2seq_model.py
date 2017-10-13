@@ -503,7 +503,6 @@ class Seq2SeqModel(object):
 
 
     def predict(self, sess, encoder_inputs, encoder_inputs_length):
-        
         input_feed = self.check_feeds(encoder_inputs, encoder_inputs_length, 
                                       decoder_inputs=None, decoder_inputs_length=None, 
                                       decode=True)
@@ -514,11 +513,11 @@ class Seq2SeqModel(object):
         output_feed = [self.decoder_pred_decode]
         outputs = sess.run(output_feed, input_feed)
 
-				# GreedyDecoder: [batch_size, max_time_step]
+        # GreedyDecoder: [batch_size, max_time_step]
         return outputs[0]	# BeamSearchDecoder: [batch_size, max_time_step, beam_width]
 
 
-    def check_feeds(self, encoder_inputs, encoder_inputs_length, 
+    def check_feeds(self, encoder_inputs, encoder_inputs_length,
                     decoder_inputs, decoder_inputs_length, decode):
         """
         Args:
@@ -551,7 +550,8 @@ class Seq2SeqModel(object):
                     "batch_size, %d != %d" % (target_batch_size, decoder_inputs_length.shape[0]))
 
         input_feed = {}
-    
+
+
         input_feed[self.encoder_inputs.name] = encoder_inputs
         input_feed[self.encoder_inputs_length.name] = encoder_inputs_length
 

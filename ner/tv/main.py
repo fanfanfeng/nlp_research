@@ -12,6 +12,17 @@ def train():
         model = blstm_crf.Model()
         model.model_restore(sess)
 
+        output_tensor = []
+        output_tensor.append(model.trans.name.replace(":0", ""))
+        output_tensor.append(model.lengths.name.replace(":0", ""))
+        output_tensor.append(model.logits.name.replace(":0",""))
+        output_tensor.append(model.dropout.name.replace(":0",""))
+
+        output_graph_with_weight = tf.graph_util.convert_variables_to_constants(sess,sess.graph_def,output_tensor)
+        with tf.gfile.FastGFile(os.path.join(ner_setting.train_model_bi_lstm, "weight_seq2seq.pb"),
+                                'wb') as gf:
+            gf.write(output_graph_with_weight.SerializeToString())
+
         for epoch in range(model.train_epoch):
             print("start epoch {}".format(str(epoch)))
             average_loss = 0
@@ -111,7 +122,7 @@ def predict(text):
 
 
 if __name__ == '__main__':
-    state = 1
+    state = 0
     if state == 0:
         train()
     else:

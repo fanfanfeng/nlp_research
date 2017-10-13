@@ -355,6 +355,7 @@ class Seq2SeqModel(object):
             if target_batch_size != decoder_inputs_length.shape[0]:
                 raise ValueError("Decoder targets 和 它的长度不一致%d != %d" % (target_batch_size, decoder_inputs_length.shape[0]))
 
+
         feed_dict = {}
         feed_dict[self.encoder_inputs.name] = encoder_inputs
         feed_dict[self.encoder_inputs_length.name] = encoder_inputs_length
@@ -429,6 +430,8 @@ class Seq2SeqModel(object):
         input_feed = self.make_feeds_dict(encoder_inputs,encoder_inputs_length,
                                           None,None,True)
         input_feed[self.keep_prob_placeholder.name] = 1.0
+        print(self.keep_prob_placeholder.name)
+        print(self.decoder_pred_decode.name)
         output_feed = self.decoder_pred_decode
         predicts = sess.run(output_feed,input_feed)
 

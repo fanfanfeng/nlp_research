@@ -6,18 +6,21 @@ from category.tv import bi_lstm_model
 import jieba
 from category.tv import data_util
 from collections import OrderedDict
+import time
 def predict():
 
     index2label = {i: l.strip() for i, l in enumerate(classfication_setting.label_list)}
 
     word2id_dict = data_util.load_word2id()
 
-
+    start = time.time()
     graph = tf.Graph()
     with graph.as_default(),tf.Session() as sess:
         model = bi_lstm_model.Bi_lstm()
         model.restore_model(sess)
-        text = input("请输入句子：")
+        end = time.time()
+        print("time cost load model:",end - start)
+        text = ""#input("请输入句子：")
         while text:
             words = list(jieba.cut(text))
             words = " ".join(words)
@@ -43,6 +46,7 @@ def predict():
 
 
 if __name__ == '__main__':
-    predict()
+    for i in range(10):
+        predict()
 
 

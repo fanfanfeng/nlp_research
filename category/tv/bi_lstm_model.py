@@ -133,6 +133,7 @@ class Bi_lstm():
 
         fetches = [self.logits,self.prediction]
 
+
         logit,predict = sess.run(fetches,feed_dict)
         return predict,logit
 
