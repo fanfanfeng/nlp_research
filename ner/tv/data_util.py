@@ -45,12 +45,19 @@ def read_data(path,max_length = 20):
                         except:
                             continue
 
+
+
                         if tag_x not in word2id_dict:
                             print("{}不在word2vec里面".format(tag_x))
                             continue
                         words_id.append(word2id_dict[tag_x])
-                        tag_id = ner_setting.tag_to_id[tag_y]
-                        tags_id.append(tag_id)
+                        try:
+                            tag_id = ner_setting.tag_to_id[tag_y]
+                            tags_id.append(tag_id)
+                        except Exception as e:
+                            print(real_file_path)
+                            raise e
+
 
                         if len(words_id) == ner_setting.sentence_length:
                             break

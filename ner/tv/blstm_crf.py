@@ -107,7 +107,6 @@ class Model():
             self.inputs:inputs,
             self.dropout:1.0
         }
-        print(self.dropout.name)
         if is_train:
             feed_dict[self.labels] = labels
             feed_dict[self.dropout] = self.dropout_train
@@ -128,7 +127,6 @@ class Model():
             return lengths,logits
 
     def predict(self,sess,inputs):
-        print(self.trans.name)
         crf_trans_matrix = self.trans.eval()
         lengths,scores = self.run_step(sess,inputs,None,False)
         paths = []
