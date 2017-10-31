@@ -50,9 +50,7 @@ def read_data(path,max_length = 20):
                         input_x.append(tokens)
                         input_y.append(classfication_setting.label_list.index(dir))
 
-                    #if count > 200000:
-                        #count =0
-                        #break
+
 
 
     output_dict['input_x'] = np.array(input_x)

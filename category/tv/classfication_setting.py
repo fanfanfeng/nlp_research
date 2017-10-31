@@ -23,7 +23,7 @@ embedding_dim = 200 #词向量的维度
 hidden_neural_size = 256 #lstm隐层神经元数目
 hidden_layer_num = 2 #lstm的层数8=
 dropout = 0.5 #dropout的概率值
-batch_size = 1000 #每次批量学习的数目
+batch_size = 500 #每次批量学习的数目
 sentence_length = 20 #句子长度
 initial_learning_rate = 0.01 #初始学习率
 min_learning_rate = 0.0001 #最小学习率
@@ -39,3 +39,12 @@ show_every = 20 #没训练10次，验证模型
 valid_every = 400 #每训练100次，在测试集上面验证模型
 checkpoint_every = 620 #没训练200，保存模型
 tv_data_path = r'E:\tv_category\train'
+
+
+use_attention = True
+
+if use_attention:
+    attention_size = 300
+    # 模型保存位置
+    train_model_bi_lstm = r"Model/bilstm_attention_model_256/"
+    graph_model_bi_lstm = r"Model/bilstm_attention_graph_256/"

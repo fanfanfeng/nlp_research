@@ -199,7 +199,9 @@ class Seq2SeqModel(object):
 
                 # decoder_outputs_train: BasicDecoderOutput
                 #                        namedtuple(rnn_outputs, sample_id)
-                # decoder_outputs_train.rnn_output: [batch_size, max_time_step + 1, num_decoder_symbols] if output_time_major=False
+                # decoder_outputs_train.rnn_output: [batch_size, max_time_st
+                #
+                # ep + 1, num_decoder_symbols] if output_time_major=False
                 #                                   [max_time_step + 1, batch_size, num_decoder_symbols] if output_time_major=True
                 # decoder_outputs_train.sample_id: [batch_size], tf.int32
                 (self.decoder_outputs_train, self.decoder_last_state_train, 
