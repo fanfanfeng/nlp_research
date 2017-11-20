@@ -6,6 +6,7 @@ import tensorflow as tf
 from category.tv import classfication_setting
 from category.tv import  bi_lstm_model
 from category.tv import bi_lstm_model_attention
+from category.tv import cnn_model
 from category.tv import data_util
 
 
@@ -15,9 +16,12 @@ def train():
 
     graph = tf.Graph()
     with graph.as_default() as g,tf.Session(graph=g) as sess:
-        if classfication_setting.use_attention:
+        if classfication_setting.use_net_work == 1:
             model = bi_lstm_model_attention.Bi_lstm()
             print("初始化attion模型完成")
+        elif classfication_setting.use_net_work == 2:
+            model = cnn_model.Cnn_model()
+            print("初始化 CNN model 模型完成")
         else:
             model = bi_lstm_model.Bi_lstm()
             print("初始化模型完成")
@@ -37,15 +41,15 @@ def train():
 
 
         #保存模型graph
-        #tf.train.write_graph(sess.graph_def, classfication_setting.graph_model_bi_lstm, "weight_classify.pb", False)
+        tf.train.write_graph(sess.graph_def, classfication_setting.graph_model_bi_lstm, "weight_classify.pb", False)
 
-         #将权重固话到graph中去
-        #output_tensor = []
-        #output_tensor.append(model.logits.name.replace(":0",""))
-        #output_graph_with_weight = tf.graph_util.convert_variables_to_constants(sess, sess.graph_def, output_tensor)
-        #with tf.gfile.FastGFile(os.path.join(classfication_setting.graph_model_bi_lstm, "weight_classify.pb"),
-         #                      'wb') as gf:
-         #   gf.write(output_graph_with_weight.SerializeToString())
+        #将权重固话到graph中去
+        output_tensor = []
+        output_tensor.append(model.logits.name.replace(":0",""))
+        output_graph_with_weight = tf.graph_util.convert_variables_to_constants(sess, sess.graph_def, output_tensor)
+        with tf.gfile.FastGFile(os.path.join(classfication_setting.graph_model_bi_lstm, "weight_classify.pb"),
+                              'wb') as gf:
+            gf.write(output_graph_with_weight.SerializeToString())
 
         for num_epoch in range(classfication_setting.num_epochs):
             print("epoch  {}".format(num_epoch +1))

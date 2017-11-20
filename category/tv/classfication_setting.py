@@ -10,7 +10,7 @@ word2vec_path = r'E:\tv_category\w2v.model.pkl'
 word2id_path = r'E:\tv_category\word2id.pkl'
 
 #标签列表
-label_list = ['JOKE', 'CHAT', 'STOCK', 'TVINSTRUCTION', 'BAIKE', 'SETTING', 'PLAYER', 'VIDEO', 'MUSIC', 'APP', 'INSTRUCTION','WEATHER']
+label_list = ['JOKE', 'CHAT', 'STOCK', 'TVINSTRUCTION', 'BAIKE', 'SETTING', 'PLAYER', 'VIDEO', 'MUSIC', 'APP', 'INSTRUCTION','WEATHER',"STORYTELL","CROSSTALK"]
 index2label = {i:l.strip() for i,l in enumerate(label_list)}
 
 #模型保存位置
@@ -18,7 +18,7 @@ train_model_bi_lstm = r"Model/bilstm_train_model_256/"
 graph_model_bi_lstm = r"Model/bilstm_train_graph_256/"
 
 #模型参数
-sentence_classes = 12 #分类的数目
+sentence_classes = 14 #分类的数目
 embedding_dim = 200 #词向量的维度
 hidden_neural_size = 256 #lstm隐层神经元数目
 hidden_layer_num = 2 #lstm的层数8=
@@ -41,10 +41,21 @@ checkpoint_every = 620 #没训练200，保存模型
 tv_data_path = r'E:\tv_category\train'
 
 
-use_attention = True
 
-if use_attention:
+
+
+
+
+
+use_net_work = 2    # 0 lstm
+                    # 1 attention lstm
+                    # 2 cnn
+
+if use_net_work == 1:
     attention_size = 300
     # 模型保存位置
     train_model_bi_lstm = r"Model/bilstm_attention_model_256/"
     graph_model_bi_lstm = r"Model/bilstm_attention_graph_256/"
+elif use_net_work == 2:
+    train_model_bi_lstm = r"Model/cnn_model_256/"
+    graph_model_bi_lstm = r"Model/cnn_graph_256/"

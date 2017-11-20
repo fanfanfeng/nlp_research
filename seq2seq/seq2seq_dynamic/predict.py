@@ -2,7 +2,7 @@
 import sys,os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import tensorflow as tf
-import config
+from seq2seq.seq2seq_dynamic import config
 import data_utils
 import model
 import jieba
@@ -10,7 +10,7 @@ import numpy as np
 
 def predict():
     with tf.Session() as sess:
-        model_obj = model.Seq2SeqModel('decode')
+        model_obj = model.Seq2SeqModel(config,'decode')
         model_obj.batch_size = 1
         model_obj.model_restore(sess)
 
@@ -23,7 +23,11 @@ def predict():
                 break
             sentence =" ".join(list(jieba.cut(question)))
             token_ids_sentence = data_utils.sentence_to_token_ids(sentence,vocab)
-            predicted_sentence = model_obj.predict(sess,np.array([token_ids_sentence]),np.array([len(token_ids_sentence)]),vocab_list)
+            if config.beam_with >1:
+                predicted_sentence = model_obj.predict_beam_search(sess, np.array([token_ids_sentence]),
+                                                       np.array([len(token_ids_sentence)]), vocab_list)
+            else:
+                predicted_sentence = model_obj.predict(sess,np.array([token_ids_sentence]),np.array([len(token_ids_sentence)]),vocab_list)
             print("输出:",predicted_sentence)
 
 if __name__ == '__main__':

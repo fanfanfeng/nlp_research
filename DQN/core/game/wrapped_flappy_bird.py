@@ -2,7 +2,7 @@ import numpy as np
 import sys
 import random
 import pygame
-import flappy_bird_utils
+from  DQN.core.game import flappy_bird_utils
 import pygame.surfarray as surfarray
 from pygame.locals import *
 from itertools import cycle
@@ -67,7 +67,7 @@ class GameState:
         self.playerMaxVelY = 10  # max vel along Y, max descend speed
         self.playerMinVelY = -8  # min vel along Y, max ascend speed
         self.playerAccY = 1  # players downward accleration
-        self.playerFlapAcc = -9  # players speed on flapping
+        self.playerFlapAcc = -7  # players speed on flapping
         self.playerFlapped = False  # True when player flaps
 
     def reset(self):
@@ -98,6 +98,8 @@ class GameState:
                 self.score += 1
                 #SOUNDS['point'].play()
                 reward = 1
+
+
 
         # playerIndex basex change
         if (self.loopIter + 1) % 3 == 0:

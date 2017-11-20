@@ -3,22 +3,23 @@ import random
 import numpy as np
 import tensorflow as tf
 from tensorflow.python.layers.core import Dense,array_ops
+from tensorflow.python.util import nest
 from tensorflow.contrib import rnn
 from tensorflow.contrib import seq2seq
 
-import config
-import data_utils
+
+from seq2seq.seq2seq_dynamic import data_utils
 import math
 import os
 
 
 class Seq2SeqModel(object):
-    def __init__(self,model):
+    def __init__(self,config,model):
         assert  model.lower() in ['train','decode']
         self.mode = model.lower()
 
         #初始化一些基本参数
-        self._init_config()
+        self._init_config(config)
 
         #初始化placeholder
         self._init_placeholders()
@@ -38,7 +39,8 @@ class Seq2SeqModel(object):
         self.saver = tf.train.Saver(max_to_keep=3)
 
 
-    def _init_config(self):
+    def _init_config(self,config):
+        self.config = config
         self.cell_type = config.cell_type
         self.hidden_units = config.hidden_units
         self.depth = config.depth
@@ -63,7 +65,11 @@ class Seq2SeqModel(object):
         self.keep_prob_placeholder = tf.placeholder(self.dtype,shape=[],name='keep_prob')
         self.mode_save_path = os.path.join(config.model_dir,config.model_name)
 
-
+        self.beam_with = config.beam_with
+        if config.beam_with > 1 and self.mode == "decode":
+            self.use_beamsearch_decode = True
+        else:
+            self.use_beamsearch_decode = False
 
 
     def _init_placeholders(self):
@@ -228,33 +234,70 @@ class Seq2SeqModel(object):
                 def embed_and_input_proj(inputs):
                     return input_layer(tf.nn.embedding_lookup(self.embeddings,inputs))
 
-                decoding_helper = seq2seq.GreedyEmbeddingHelper(start_tokens=start_token,end_token=end_token,
-                                                                embedding=embed_and_input_proj)
-                inference_decoder = seq2seq.BasicDecoder(cell=self.decoder_cell,
-                                                         helper=decoding_helper,
-                                                         initial_state=self.decoder_initial_state,
-                                                         output_layer=output_layer)
+                if not self.use_beamsearch_decode:
+                    decoding_helper = seq2seq.GreedyEmbeddingHelper(start_tokens=start_token,end_token=end_token,
+                                                                    embedding=embed_and_input_proj)
+                    inference_decoder = seq2seq.BasicDecoder(cell=self.decoder_cell,
+                                                             helper=decoding_helper,
+                                                             initial_state=self.decoder_initial_state,
+                                                             output_layer=output_layer)
+                else:
+                    inference_decoder = seq2seq.BeamSearchDecoder(
+                        cell=self.decoder_cell,
+                        embedding=embed_and_input_proj,
+                        start_tokens=start_token,
+                        end_token=end_token,
+                        initial_state=self.decoder_initial_state,
+                        beam_width=self.beam_with,
+                        output_layer=output_layer
+                    )
+
+                    # For GreedyDecoder, return
+                    # decoder_outputs_decode: BasicDecoderOutput instance
+                    #                         namedtuple(rnn_outputs, sample_id)
+                    # decoder_outputs_decode.rnn_output: [batch_size, max_time_step, num_decoder_symbols] 	if output_time_major=False
+                    #                                    [max_time_step, batch_size, num_decoder_symbols] 	if output_time_major=True
+                    # decoder_outputs_decode.sample_id: [batch_size, max_time_step], tf.int32		if output_time_major=False
+                    #                                   [max_time_step, batch_size], tf.int32               if output_time_major=True
+
+                    # For BeamSearchDecoder, return
+                    # decoder_outputs_decode: FinalBeamSearchDecoderOutput instance
+                    #                         namedtuple(predicted_ids, beam_search_decoder_output)
+                    # decoder_outputs_decode.predicted_ids: [batch_size, max_time_step, beam_width] if output_time_major=False
+                    #                                       [max_time_step, batch_size, beam_width] if output_time_major=True
+                    # decoder_outputs_decode.beam_search_decoder_output: BeamSearchDecoderOutput instance
+                    #                                                    namedtuple(scores, predicted_ids, parent_ids)
 
                 (self.decoder_outputs_decode,self.decoder_last_state_decode,self.decoder_outputs_length_decode) = (seq2seq.dynamic_decode(decoder=inference_decoder,
                                         output_time_major=False,
-                                        maximum_iterations=config.max_seq_length))
+                                        maximum_iterations=self.config.max_decode_step))
 
-                # decoder_outputs_decode.sample_id: [batch_size, max_time_step]
-                # Or use argmax to find decoder symbols to emit:
-                # self.decoder_pred_decode = tf.argmax(self.decoder_outputs_decode.rnn_output,
-                #                                      axis=-1, name='decoder_pred_decode')
+                if not self.use_beamsearch_decode:
+                    # decoder_outputs_decode.sample_id: [batch_size, max_time_step]
+                    # Or use argmax to find decoder symbols to emit:
+                    # self.decoder_pred_decode = tf.argmax(self.decoder_outputs_decode.rnn_output,
+                    #                                      axis=-1, name='decoder_pred_decode')
 
-                # Here, we use expand_dims to be compatible with the result of the beamsearch decoder
-                # decoder_pred_decode: [batch_size, max_time_step, 1] (output_major=False)
-                self.decoder_pred_decode = tf.expand_dims(self.decoder_outputs_decode.sample_id, -1)
-
-
+                    # Here, we use expand_dims to be compatible with the result of the beamsearch decoder
+                    # decoder_pred_decode: [batch_size, max_time_step, 1] (output_major=False)
+                    self.decoder_pred_decode = tf.expand_dims(self.decoder_outputs_decode.sample_id, -1)
+                else:
+                    # Use beam search to approximately find the most likely translation
+                    # decoder_pred_decode: [batch_size, max_time_step, beam_width] (output_major=False)
+                    self.decoder_pred_decode = self.decoder_outputs_decode.predicted_ids
 
     # Building decoder cell and attention. Also returns decoder_initial_state
     def build_decode_cell(self):
         encoder_outputs = self.encoder_outputs
         encoder_last_state = self.encoder_last_state
         encoder_inputs_length = self.encoder_inputs_length
+
+        if self.use_beamsearch_decode:
+            encoder_outputs = seq2seq.tile_batch(self.encoder_outputs,multiplier=self.beam_with)
+            encoder_last_state = nest.map_structure(lambda s:seq2seq.tile_batch(s,self.beam_with),encoder_last_state)
+            encoder_inputs_length = seq2seq.tile_batch(self.encoder_inputs_length,multiplier=self.beam_with)
+
+
 
         # Building attention mechanism: Default Bahdanau
         # 'Bahdanau' style attention: https://arxiv.org/abs/1409.0473
@@ -301,7 +344,7 @@ class Seq2SeqModel(object):
 
         # Also if beamsearch decoding is used, the batch_size argument in .zero_state
         # should be ${decoder_beam_width} times to the origianl batch_size
-        batch_size = self.batch_size
+        batch_size = self.batch_size if not self.use_beamsearch_decode else self.batch_size * self.beam_with
         initial_state = [ state for state in encoder_last_state]
         initial_state[-1] = self.decoder_cell_list[-1].zero_state(
             batch_size = batch_size,dtype=self.dtype
@@ -430,8 +473,6 @@ class Seq2SeqModel(object):
         input_feed = self.make_feeds_dict(encoder_inputs,encoder_inputs_length,
                                           None,None,True)
         input_feed[self.keep_prob_placeholder.name] = 1.0
-        print(self.keep_prob_placeholder.name)
-        print(self.decoder_pred_decode.name)
         output_feed = self.decoder_pred_decode
         predicts = sess.run(output_feed,input_feed)
 
@@ -449,6 +490,33 @@ class Seq2SeqModel(object):
         output_sentence = " ".join([vocab_list[output] for output in outputs])
         return output_sentence
 
+    # predicted_ids: GreedyDecoder; [batch_size, max_time_step, 1]
+    # BeamSearchDecoder; [batch_size, max_time_step, beam_width]
+    def predict_beam_search(self, sess, encoder_inputs, encoder_inputs_length, vocab_list):
+        input_feed = self.make_feeds_dict(encoder_inputs, encoder_inputs_length,
+                                          None, None, True)
+        input_feed[self.keep_prob_placeholder.name] = 1.0
+
+        output_feed = self.decoder_pred_decode
+        predicts = sess.run(output_feed, input_feed)
+
+        outputs = []
+        # This is a greedy decoder - outputs are just argmaxes of output_logits.
+        print(predicts.shape)
+        result = []
+        print(predicts[0])
+        for k in range(self.beam_with):
+            result.append(self.seq2words(predicts[0][:,k],vocab_list))
+        return result
+
+
+    def seq2words(self,seq, inverse_target_dictionary):
+        words = []
+        for w in seq:
+            if w == data_utils.EOS_ID or w == data_utils.PAD_ID:
+                break
+            words.append(inverse_target_dictionary[w])
+        return ' '.join(words)
 
 
     #模型恢复或者初始化

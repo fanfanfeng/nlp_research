@@ -8,6 +8,10 @@ data_dir = os.path.join(projectDir,'data')
 
 
 # 训练数据相关参数
+#source_vocabulary = 'data/vocab_enc.in' # source 的词库存储路径
+#target_vocabulary = 'data/vocab_dec.in' # target的词库存储路径,用于训练对话，词库是同一个
+
+# 训练数据相关参数
 source_vocabulary = 'data/vocab40000.in' # source 的词库存储路径
 target_vocabulary = 'data/vocab40000.in' # target的词库存储路径,用于训练对话，所以词库是同一个
 
@@ -37,10 +41,11 @@ save_freq = 1150                # 训练多少次，保存一次结果
 valid_freq = 1150               # 训练多少次，在验证集上面验证模型
 optimizer = 'adam'              # 训练时候的优化器: (adadelta, adam, rmsprop)
 model_dir = 'model/'            # 模型保存位置
-model_name = 'chat.ckpt'        # 模型保存的名称
+model_name = 'movie_error_find.ckpt'        # 模型保存的名称
 shuffle_each_epoch = True       # 每训练一轮是否打乱训练集
 sort_by_length = True           # 根据句子长度排列训练集
 use_fp16 =  False               # Use half precision float16 instead of float32 as dtype
+beam_with = 5
 
 
 

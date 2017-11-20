@@ -3,17 +3,25 @@ import os
 import tensorflow as tf
 
 
-source_type = 2 # 1，ner_tv的词向量
-                # 2，ner_tv的字向量
+source_type = 1 # 1，ner_tv的字向量
+                # 2，ner_tv的词向量
 
 if source_type == 1:
-    pass
-    #word2vec_path = r'E:\tv_category\w2v.model.pkl'
-    #word2id_path = r'E:\tv_category\word2id.pkl'
-    #data_path = os.path.join(defaultPath.PROJECT_DIRECTORY,"data_orgin/ner_tv/tagged_data.txt")
+    word2vec_path = r'E:\tv_category\word_vec_mode\w2v.model.pkl'
+    word2id_path = r'E:\tv_category\word_vec_mode\word2id.pkl'
+    tv_data_path = r'E:\tv_category\word_vec_mode\ner_right_train'
+    # 模型保存位置
+    train_model_bi_lstm = r"Model/bilstm_train_model_256_single/"
+    graph_model_bi_lstm = r"Model/bilstm_train_graph_256_single/"
+
 elif source_type == 2:
     word2vec_path = r'E:\tv_category\w2v.model.pkl'
     word2id_path = r'E:\tv_category\word2id.pkl'
+    tv_data_path = r'E:\tv_category\normal_ner_train'
+    #模型保存位置
+    train_model_bi_lstm = r"Model/bilstm_train_model_256/"
+    graph_model_bi_lstm = r"Model/bilstm_train_graph_256/"
+
 
 
 
@@ -49,9 +57,6 @@ tag_to_id = {"O": 0,
 
 id_to_tag = { item[1]:item[0] for item in tag_to_id.items()}
 
-#模型保存位置
-train_model_bi_lstm = r"Model/bilstm_train_model_256/"
-graph_model_bi_lstm = r"Model/bilstm_train_graph_256/"
 
 #模型参数
 tags_num = 17#分类的数目
@@ -74,6 +79,6 @@ valid_num = 3000 #用于验证模型的测试集数目
 show_every = 20 #没训练10次，验证模型
 valid_every = 200 #每训练100次，在测试集上面验证模型
 checkpoint_every = 400 #没训练200，保存模型
-tv_data_path = r'E:\tv_category\normal_ner_train'
+
 
 

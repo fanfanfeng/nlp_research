@@ -54,7 +54,7 @@ def read_data(path,max_length = 20):
 
 
     output_dict['input_x'] = np.array(input_x)
-    one_hot_y = tf.one_hot(input_y, depth=12, on_value=None, off_value=None, axis=None, dtype=None, name=None)
+    one_hot_y = tf.one_hot(input_y, depth=14, on_value=None, off_value=None, axis=None, dtype=None, name=None)
     with tf.Session() as sess:
 
         output_dict['input_y'] = sess.run(one_hot_y)

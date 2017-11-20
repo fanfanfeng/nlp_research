@@ -3,9 +3,9 @@ import sys,os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 import tensorflow as tf
-import data_utils
-import config
-import model
+from seq2seq.seq2seq_beamsearch import data_utils
+from seq2seq.seq2seq_beamsearch import config
+from seq2seq.seq2seq_beamsearch import seq2seq_model
 import numpy as np
 import time
 import math
@@ -18,7 +18,7 @@ def train():
 
     with tf.Session() as sess:
         graph_writer = tf.summary.FileWriter(config.model_dir,graph=sess.graph)
-        model_obj = model.Seq2SeqModel('train')
+        model_obj = seq2seq_model.Seq2SeqModel(config=config,mode='train')
         model_obj.model_restore(sess)
 
 

@@ -124,6 +124,7 @@ def main():
         state = env.reset()
 
         for step in range(STEP):
+            env.render()
             action = agent.egreedy_action(state)
             next_state,reward,done,_ = env.step(action)
 

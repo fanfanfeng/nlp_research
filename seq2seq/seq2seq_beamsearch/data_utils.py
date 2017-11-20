@@ -5,7 +5,7 @@ import sys
 from tensorflow.python.platform import gfile
 import numpy as np
 
-import config
+from seq2seq.seq2seq_beamsearch import config
 
 _PAD = '_PAD'
 _GO = '_GO'

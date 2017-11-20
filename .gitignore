@@ -2,6 +2,7 @@
 .py*
 data/
 model/
+model_save/
 graph/
 *test.py
 *-abk*

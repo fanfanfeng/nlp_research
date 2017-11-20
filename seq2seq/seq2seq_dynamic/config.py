@@ -42,6 +42,10 @@ shuffle_each_epoch = True       # 每训练一轮是否打乱训练集
 sort_by_length = True           # 根据句子长度排列训练集
 use_fp16 =  False               # Use half precision float16 instead of float32 as dtype
 
+#decode模式下面，最大搜索深度
+beam_with = 3
+max_decode_step = 10
+
 
 
 

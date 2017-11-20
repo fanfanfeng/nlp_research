@@ -39,7 +39,7 @@ class Model():
         with tf.variable_scope("word2vec_embedding"):
             self.embedding_vec = tf.Variable(change_gensim_mode2array(), name='word2vec', dtype=tf.float32)
             inputs_embedding = tf.nn.embedding_lookup(self.embedding_vec,self.inputs)
-            lengths = self.get_length(inputs_embedding)
+            lengths = self.get_length(self.inputs)
             self.lengths = tf.cast(lengths, tf.int32)
         lstm_outputs = self.biLSTM_layer(inputs_embedding,self.lengths)
 
@@ -69,9 +69,12 @@ class Model():
         return tf.concat(outputs,axis=2)
 
     def get_length(self,data):
-        used = tf.sign(tf.reduce_max(tf.abs(data),reduction_indices=2))
-        length = tf.reduce_sum(used,reduction_indices=1)
-        length = tf.cast(length,tf.int32)
+        #used = tf.sign(tf.reduce_max(tf.abs(data),reduction_indices=2))
+        #length = tf.reduce_sum(used,reduction_indices=1)
+        #length = tf.cast(length,tf.int32)
+        used = tf.sign(tf.abs(data))
+        length = tf.reduce_sum(used, reduction_indices=1)
+        length = tf.cast(length, tf.int32)
         return length
 
     def project_layer(self,lstm_outputs):
@@ -120,8 +123,6 @@ class Model():
             global_step ,loss,_ = sess.run(fetch_list,feed_dict)
             return global_step,loss
         else:
-            print(self.lengths.name)
-            print(self.logits.name)
             fetch_list= [self.lengths,self.logits]
             lengths,logits = sess.run(fetch_list,feed_dict)
             return lengths,logits
