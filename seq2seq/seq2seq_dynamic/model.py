@@ -126,7 +126,7 @@ class Seq2SeqModel(object):
             self.encoder_cell = rnn.MultiRNNCell([self.build_single_cell() for _ in range(self.depth)])
 
             # Embedded_inputs: [batch_size, time_step, embedding_size]
-            self. encoder_inputs_embedded = tf.nn.embedding_lookup(self.embeddings,self.encoder_inputs)
+            self.encoder_inputs_embedded = tf.nn.embedding_lookup(self.embeddings,self.encoder_inputs)
 
             # Input projection layer to feed embedded inputs to the cell
             input_layer = Dense(self.hidden_units,dtype=self.dtype,name='input_projection')
