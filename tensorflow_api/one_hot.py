@@ -8,4 +8,3 @@ print ("a is : ")
 print(a)
 with tf.Session() as sess:
     print(type(sess.run(a)))
-    tf.nn.bidirectional_dynamic_rnn
