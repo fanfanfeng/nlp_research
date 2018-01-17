@@ -25,6 +25,8 @@ def read_data(path,max_length = 20,test=False):
 
     count = 0
     for dir in os.listdir(path):
+        if dir not in classfication_setting.label_list:
+            continue
         real_path = os.path.join(path,dir)
         if not os.path.isdir(real_path):
             continue
