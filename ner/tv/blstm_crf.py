@@ -28,7 +28,9 @@ class Model():
         self.model_save_path = ner_tv.train_model_bi_lstm
         self.train_epoch = ner_tv.num_epochs
         self.dropout_train = ner_tv.dropout
-
+        self.decay_step = ner_tv.decay_step
+        self.decay_rate = ner_tv.decay_rate
+        self.min_learning_rate = ner_tv.min_learning_rate
         self.initializer = initializers.xavier_initializer()
 
         self.inputs = tf.placeholder(dtype=tf.int32,shape=[None,self.max_sentence_len],name="inputs")
@@ -48,7 +50,12 @@ class Model():
         self.loss = self.loss_layer(self.logits,self.lengths)
 
         self.global_step = tf.Variable(0, trainable=False, name="global_step")
-        self.optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
+
+        self.train_learning_rate = tf.maximum(tf.train.exponential_decay(
+            self.learning_rate, self.global_step, self.decay_step, self.decay_rate, staircase=True
+        ), self.min_learning_rate)
+
+        self.optimizer = tf.train.AdamOptimizer(learning_rate=self.train_learning_rate)
         tvars = tf.trainable_variables()
         grads, _ = tf.clip_by_global_norm(tf.gradients(self.loss, tvars), self.max_grad_norm)
         self.train_op = self.optimizer.apply_gradients(zip(grads, tvars), global_step=self.global_step)
@@ -61,7 +68,9 @@ class Model():
             lstm_cell = {}
             for direction in ['forward','backward']:
                 with tf.variable_scope(direction):
-                    lstm_cell[direction] = rnn.LSTMCell(self.num_hidden,use_peepholes=True,initializer=self.initializer)
+                    cell = rnn.LSTMCell(self.num_hidden,use_peepholes=True,initializer=self.initializer)
+                    cell = rnn.DropoutWrapper(cell,self.dropout)
+                    lstm_cell[direction] = cell
 
 
             outputs,_ = tf.nn.bidirectional_dynamic_rnn(lstm_cell['forward'],lstm_cell['backward'],
@@ -127,7 +136,7 @@ class Model():
             lengths,logits = sess.run(fetch_list,feed_dict)
             return lengths,logits
 
-    def predict(self,sess,inputs):
+    def predict(self,sess,inputs,inputs_y =[]):
         crf_trans_matrix = self.trans.eval()
         lengths,scores = self.run_step(sess,inputs,None,False)
         paths = []
@@ -135,6 +144,15 @@ class Model():
             score = score[:length]
             path,_ = crf.viterbi_decode(score,crf_trans_matrix)
             paths.append(path[:length])
+
+        if len(inputs_y)!= 0:
+            paths_y = []
+            for y,length in zip(inputs_y,lengths):
+                paths_y.append(y[:length])
+
+            return paths,paths_y
+
+
         return paths
 
 

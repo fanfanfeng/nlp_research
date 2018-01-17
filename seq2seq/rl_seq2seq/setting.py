@@ -1,5 +1,3 @@
-# create by fanfan on 2017/8/25 0025
-import tensorflow as tf
 import os
 
 
@@ -45,11 +43,3 @@ use_fp16 =  False               # Use half precision float16 instead of float32 
 #decode模式下面，最大搜索深度
 beam_with = 10
 max_decode_step = 10
-
-
-
-
-
-
-
-

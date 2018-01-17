@@ -30,7 +30,7 @@ class Meta_Load():
         words = " ".join(words)
         print(words)
         tokens = [int(self.word2id_dict[token]) for token in words.split(" ") if token != "" and token in self.word2id_dict]
-
+        print(tokens)
         if len(tokens) < classfication_setting.max_document_length:
             tokens = tokens + [0] * (classfication_setting.max_document_length - len(tokens))
         else:

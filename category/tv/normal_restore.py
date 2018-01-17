@@ -20,7 +20,7 @@ def predict():
         model.restore_model(sess)
         end = time.time()
         print("time cost load model:",end - start)
-        text = ""#input("请输入句子：")
+        text = input("请输入句子：")
         while text:
             words = list(jieba.cut(text))
             words = " ".join(words)
@@ -46,7 +46,6 @@ def predict():
 
 
 if __name__ == '__main__':
-    for i in range(10):
         predict()
 
 

@@ -246,7 +246,7 @@ class Seq2SeqModel(object):
                         cell=self.decoder_cell,
                         embedding=embed_and_input_proj,
                         start_tokens=start_token,
-                        end_token=end_token,
+                        end_token=data_utils.PAD_ID,
                         initial_state=self.decoder_initial_state,
                         beam_width=self.beam_with,
                         output_layer=output_layer

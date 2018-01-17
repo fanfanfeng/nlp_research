@@ -69,7 +69,8 @@ class Cnn_model():
             self.logits = tf.add(tf.matmul(cnn_features,softmax_w),softmax_b,name='logits')
 
             self.l2_loss += tf.nn.l2_loss(softmax_w)
-            self.l2_loss += tf.nn.l2_loss(softmax_b)
+            # bias一般不用正则化
+            #self.l2_loss += tf.nn.l2_loss(softmax_b)
 
 
         with tf.name_scope("output"):

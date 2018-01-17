@@ -56,7 +56,7 @@ import numpy as np
 def predict(text):
     if os.path.exists(ner_setting.word2id_path):
         word2id_dict = data_util.load_word2id()
-        words_list = list(jieba.cut(text))
+        words_list = list(text)
         words_list_id = [word2id_dict[i] for i in words_list]
         text_len = len(words_list_id)
         if text_len < ner_setting.max_document_length:
@@ -127,7 +127,7 @@ if __name__ == '__main__':
     if state == 0:
         train()
     else:
-        text = u'设置音量'
+        text = u'想看郭德纲的电影东风破'
         result = predict(text)
         print("分词前：" + text)
         print("分词后：" )

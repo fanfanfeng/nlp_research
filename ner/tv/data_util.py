@@ -14,7 +14,7 @@ def load_word2id():
 
     return  word2id_dict
 
-def read_data(path,max_length = 20):
+def read_data(path,max_length = 20,test=False):
 
     output_dict = dict()
 
@@ -67,8 +67,13 @@ def read_data(path,max_length = 20):
                         tags_id += [0] * (ner_setting.sentence_length - length)
 
                     if  words_id and len(tags_id) == len(words_id):
-                        input_x.append(words_id)
-                        input_y.append(tags_id)
+                        if test == False:
+                            input_x.append(words_id)
+                            input_y.append(tags_id)
+                        else:
+                            if np.random.randint(0, 30) == 20:
+                                input_x.append(words_id)
+                                input_y.append(tags_id)
                     else:
                         print("error:{}".format(line))
 

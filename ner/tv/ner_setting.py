@@ -7,12 +7,12 @@ source_type = 1 # 1，ner_tv的字向量
                 # 2，ner_tv的词向量
 
 if source_type == 1:
-    word2vec_path = r'E:\tv_category\word_vec_mode\w2v.model.pkl'
-    word2id_path = r'E:\tv_category\word_vec_mode\word2id.pkl'
-    tv_data_path = r'E:\tv_category\word_vec_mode\ner_right_train'
+    word2vec_path = r'E:\tv_category\word_vec_mode\ner_right_train_pingshu_train\w2v_ner.pkl'
+    word2id_path = r'E:\tv_category\word_vec_mode\ner_right_train_pingshu_train\word2id_ner.pkl'
+    tv_data_path = r'E:\tv_category\word_vec_mode\ner_right_train_pingshu_train\data'
     # 模型保存位置
     train_model_bi_lstm = r"Model/bilstm_train_model_256_single/"
-    graph_model_bi_lstm = r"Model/bilstm_train_graph_256_single/"
+    graph_model_bi_lstm = train_model_bi_lstm
 
 elif source_type == 2:
     word2vec_path = r'E:\tv_category\w2v.model.pkl'
@@ -64,12 +64,12 @@ embedding_dim = 200 #词向量的维度
 hidden_neural_size = 256 #lstm隐层神经元数目
 hidden_layer_num = 2 #lstm的层数8=
 dropout = 0.5 #dropout的概率值
-batch_size = 500 #每次批量学习的数目
+batch_size = 300 #每次批量学习的数目
 sentence_length = 20 #句子长度
 initial_learning_rate = 0.01 #初始学习率
 min_learning_rate = 0.0001 #最小学习率
 decay_rate = 0.8 #学习衰减比例
-decay_step = 1800 #学习率衰减步长
+decay_step = 800 #学习率衰减步长
 max_grad_norm = 5 #最大截断值
 max_document_length = 20 #句子最大长度
 

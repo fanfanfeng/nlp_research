@@ -22,7 +22,7 @@ class Meta_Load():
         self.dropout_tensor = self.sess.graph.get_operation_by_name("dropout").outputs[0]
         self.input_x_tensor = self.sess.graph.get_operation_by_name("inputs").outputs[0]
 
-        self.length_tensor = self.sess.graph.get_operation_by_name('word2vec_embedding/Cast').outputs[0]
+        self.length_tensor = self.sess.graph.get_operation_by_name('word2vec_embedding/Sum').outputs[0]
         self.logit_tensor = self.sess.graph.get_operation_by_name("Reshape").outputs[0]
         self.tran_tensor = self.sess.graph.get_operation_by_name('crf_loss/transitions').outputs[0]
 
@@ -95,7 +95,7 @@ class Meta_Load():
         return fenchiResult
 
     def load_model(self,sess):
-        with tf.gfile.FastGFile(ner_setting.train_model_bi_lstm+"weight_seq2seq.pb",'rb') as f:
+        with tf.gfile.FastGFile(ner_setting.train_model_bi_lstm+"weight_ner.pb",'rb') as f:
             graph_def = tf.GraphDef()
             graph_def.ParseFromString(f.read())
             with sess.graph.as_default():

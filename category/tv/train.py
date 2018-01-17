@@ -7,6 +7,8 @@ from category.tv import classfication_setting
 from category.tv import  bi_lstm_model
 from category.tv import bi_lstm_model_attention
 from category.tv import cnn_model
+from category.tv import bi_lstm_attention_and_cnn_model
+
 from category.tv import data_util
 
 
@@ -22,6 +24,9 @@ def train():
         elif classfication_setting.use_net_work == 2:
             model = cnn_model.Cnn_model()
             print("初始化 CNN model 模型完成")
+        elif classfication_setting.use_net_work == 3:
+            model = bi_lstm_attention_and_cnn_model.Bi_lstm_cnn()
+            print("初始化 集成模型（lstm +attention+cnn) 模型完成")
         else:
             model = bi_lstm_model.Bi_lstm()
             print("初始化模型完成")
@@ -41,7 +46,7 @@ def train():
 
 
         #保存模型graph
-        tf.train.write_graph(sess.graph_def, classfication_setting.graph_model_bi_lstm, "weight_classify.pb", False)
+        #tf.train.write_graph(sess.graph_def, classfication_setting.graph_model_bi_lstm, "weight_classify.pb", False)
 
         #将权重固话到graph中去
         output_tensor = []

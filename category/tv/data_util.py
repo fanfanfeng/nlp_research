@@ -14,8 +14,8 @@ def load_word2id():
 
     return  word2id_dict
 
-def read_data(path,max_length = 20):
-
+import random
+def read_data(path,max_length = 20,test=False):
     output_dict = dict()
 
     input_x = []
@@ -46,18 +46,27 @@ def read_data(path,max_length = 20):
                             tokens = tokens + [0]*(max_length - len(tokens))
                         tokens.reverse()
 
+                        if test == True :
+                            if  np.random.randint(0,60) == 20 :
+                                input_x.append(tokens)
+                                input_y.append(classfication_setting.label_list.index(dir))
+                        else:
+                            input_x.append(tokens)
+                            input_y.append(classfication_setting.label_list.index(dir))
 
-                        input_x.append(tokens)
-                        input_y.append(classfication_setting.label_list.index(dir))
+
 
 
 
 
     output_dict['input_x'] = np.array(input_x)
-    one_hot_y = tf.one_hot(input_y, depth=14, on_value=None, off_value=None, axis=None, dtype=None, name=None)
-    with tf.Session() as sess:
+    if test == False:
+        one_hot_y = tf.one_hot(input_y, depth=15, on_value=None, off_value=None, axis=None, dtype=None, name=None)
+        with tf.Session() as sess:
+            output_dict['input_y'] = sess.run(one_hot_y)
+    else:
+        output_dict['input_y'] =np.array(input_y)
 
-        output_dict['input_y'] = sess.run(one_hot_y)
 
     #with open(bi_lstm_setting.data_dict_path,'wb') as f:
         #pickle.dump(output_dict,f)
