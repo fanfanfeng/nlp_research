@@ -63,7 +63,7 @@ def read_data(path,max_length = 20,test=False):
 
     output_dict['input_x'] = np.array(input_x)
     if test == False:
-        one_hot_y = tf.one_hot(input_y, depth=15, on_value=None, off_value=None, axis=None, dtype=None, name=None)
+        one_hot_y = tf.one_hot(input_y, depth= len(classfication_setting.label_list), on_value=None, off_value=None, axis=None, dtype=None, name=None)
         with tf.Session() as sess:
             output_dict['input_y'] = sess.run(one_hot_y)
     else:

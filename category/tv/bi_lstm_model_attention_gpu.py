@@ -184,7 +184,7 @@ class Bi_lstm():
         with tf.name_scope("output"):
             cross_entry = tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=self.input_y)
             loss = tf.reduce_mean(cross_entry, name="loss")
-        return loss
+        return loss,logits
 
     def average_gradients(self,tower_grads):
         average_grads = []
@@ -218,10 +218,16 @@ def train():
                 with tf.device('cpu:%d' % i):
                     with tf.name_scope("%s_%d" % (TOWER_NAME,i)) as scope:
 
-                        loss = model.tower_loss(scope)
+                        loss,_ = model.tower_loss(scope)
                         tf.get_variable_scope().reuse_variables()
                         grads = model.optimizer.compute_gradients(loss)
                         tower_grads.append(grads)
+
+        with tf.variable_scope("train",reuse=True) as scope:
+            _, logits = model.tower_loss(scope)
+            prediction = tf.argmax(logits, 1, name="prediction")
+            correction_prediction = tf.equal(prediction, tf.argmax(model.input_y, 1))
+            accuracy = tf.reduce_mean(tf.cast(correction_prediction, tf.float32), name="accuracy")
 
         grads = model.average_gradients(tower_grads)
         train_op = model.optimizer.apply_gradients(grads,global_step=model.global_step)
@@ -248,19 +254,15 @@ def train():
                     print(format_str % (datetime.now(), step, loss_value, examples_per_sec, sec_per_batch))
 
                     #graph_writer.add_summary(summary_op, step)
-                if step % classfication_setting.valid_every == 0 and 0:
-                    avg_loss = 0
+                if step % classfication_setting.valid_every == 0 :
                     avg_accuracy = 0
                     for test_x, test_y in tv_data.test_iterbatch():
-                        _, _, loss, accuracy, _ = model.train_step(sess, False, test_x, test_y)
-                        avg_loss += loss
-                        avg_accuracy += accuracy
+                        feed_dict = model.create_feed_dict(is_train=False, innputX=test_x, inputY=test_y)
+                        accuracy_val = sess.run(accuracy,feed_dict=feed_dict)
+                        avg_accuracy += accuracy_val
 
-                    avg_loss = avg_loss / tv_data.test_epoch
                     avg_accuracy = avg_accuracy / tv_data.test_epoch
-                    print(
-                        "验证模型, 训练步数 {} ,学习率 {:g}, 损失值 {:g}, 精确值 {:g}".format(step, model.learning_rate.eval(), avg_loss,
-                                                                             avg_accuracy))
+                    print("验证模型, 训练步数 {} , 精确值 {:g}".format(step, avg_accuracy))
 
                 if step % classfication_setting.checkpoint_every == 0:
                     path = model.saver.save(sess, classfication_setting.train_model_bi_lstm, step)

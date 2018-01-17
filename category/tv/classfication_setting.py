@@ -57,12 +57,12 @@ elif use_model_type == 1:
         graph_model_bi_lstm = train_model_bi_lstm
 
 #标签列表
-label_list = ['JOKE', 'CHAT', 'STOCK', 'TVINSTRUCTION', 'BAIKE', 'SETTING', 'PLAYER', 'VIDEO', 'MUSIC', 'APP', 'INSTRUCTION','WEATHER',"STORYTELL","CROSSTALK","ESSAY"]
+label_list = ['CHAT',"STORYTELL","CROSSTALK","ESSAY"] #['JOKE', 'CHAT', 'STOCK', 'TVINSTRUCTION', 'BAIKE', 'SETTING', 'PLAYER', 'VIDEO', 'MUSIC', 'APP', 'INSTRUCTION','WEATHER',"STORYTELL","CROSSTALK","ESSAY"]
 index2label = {i:l.strip() for i,l in enumerate(label_list)}
 
 
 #模型参数
-sentence_classes = 15 #分类的数目
+sentence_classes = 4#分类的数目
 embedding_dim = 200 #词向量的维度
 hidden_neural_size = 256 #lstm隐层神经元数目
 hidden_layer_num = 2 #lstm的层数8=
@@ -80,7 +80,7 @@ max_document_length = 20 #句子最大长度
 num_epochs = 200 #重复训练的次数
 valid_num = 3000 #用于验证模型的测试集数目
 show_every = 20 #没训练10次，验证模型
-valid_every = 400 #每训练100次，在测试集上面验证模型
+valid_every = 200 #每训练100次，在测试集上面验证模型
 checkpoint_every = 620 #没训练200，保存模型
 
 
