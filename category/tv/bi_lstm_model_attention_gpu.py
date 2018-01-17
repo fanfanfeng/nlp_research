@@ -130,7 +130,8 @@ class Bi_lstm():
         sess.run(tf.global_variables_initializer())
         check_point = tf.train.get_checkpoint_state(self.train_model_save_path)
         if not check_point:
-            raise FileNotFoundError("not found model")
+            return
+
         file_name = os.path.basename(check_point.model_checkpoint_path)
         real_path = os.path.join(self.train_model_save_path, file_name)
 
@@ -236,7 +237,7 @@ def train():
             allow_soft_placement = True,
             log_device_placement = log_device_placement
         ))
-        sess.run(tf.global_variables_initializer())
+        model.restore_model(sess)
 
         tv_data = data_util.BatchManager(classfication_setting.tv_data_path, classfication_setting.batch_size)
         for num_epoch in range(classfication_setting.num_epochs):
