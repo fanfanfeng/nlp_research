@@ -16,10 +16,14 @@ use_net_work = 1    # 0 lstm
                     # 3 lstm + attention + cnn
 attention_size = 300
 if use_model_type == 0:
-    if 'linux' in sys.platform:
+    if 'linux' not in sys.platform:
         word2vec_path = r'E:\tv_category\category\w2v_classify.pkl'
         word2id_path = r'E:\tv_category\category\word2id_classify.pkl'
         tv_data_path = r'E:\tv_category\category\segment_twotype'
+    else:
+        word2vec_path = r'/data/python_project/category/w2v_classify.pkl'
+        word2id_path = r'/data/python_project/category/word2id_classify.pkl'
+        tv_data_path = r'/data/python_project/category/segment_twotype'
 
     if use_net_work == 1:
         train_model_bi_lstm = r"Model/bilstm_attention_model_256/"
