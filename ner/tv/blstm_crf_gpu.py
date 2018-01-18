@@ -255,6 +255,7 @@ def train():
                     if best_f1 < f1_score_value:
                         print("mew best f1_score,save model ")
                         model_obj.saver.save(sess, model_obj.model_save_path, global_step=step)
+                        best_f1 = f1_score_value
 
 import os
 
