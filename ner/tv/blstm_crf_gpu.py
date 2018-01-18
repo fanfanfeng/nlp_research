@@ -1,4 +1,6 @@
 # create by fanfan on 2017/7/26 0026
+import sys
+sys.path.append(r'/data/python_project/nlp_research')
 import numpy as np
 import tensorflow as tf
 from tensorflow.contrib import crf

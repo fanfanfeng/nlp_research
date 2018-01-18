@@ -1,15 +1,21 @@
 # create by fanfan on 2017/7/10 0010
 import os
-import tensorflow as tf
+import sys
 
 
 source_type = 1 # 1，ner_tv的字向量
                 # 2，ner_tv的词向量
 
 if source_type == 1:
-    word2vec_path = r'E:\tv_category\word_vec_mode\ner_right_train_pingshu_train\w2v_ner.pkl'
-    word2id_path = r'E:\tv_category\word_vec_mode\ner_right_train_pingshu_train\word2id_ner.pkl'
-    tv_data_path = r'E:\tv_category\word_vec_mode\ner_right_train_pingshu_train\data'
+    if 'linux' not in sys.platform:
+        word2vec_path = r'/data/python_project/ner_right_train_pingshu_train\w2v_ner.pkl'
+        word2id_path = r'/data/python_project/ner_right_train_pingshu_train\word2id_ner.pkl'
+        tv_data_path = r'/data/python_project/ner_right_train_pingshu_train\data'
+    else:
+        word2vec_path = r'E:\tv_category\word_vec_mode\ner_right_train_pingshu_train\w2v_ner.pkl'
+        word2id_path = r'E:\tv_category\word_vec_mode\ner_right_train_pingshu_train\word2id_ner.pkl'
+        tv_data_path = r'E:\tv_category\word_vec_mode\ner_right_train_pingshu_train\data'
+
     # 模型保存位置
     train_model_bi_lstm = r"Model/bilstm_train_model_256_single/"
     graph_model_bi_lstm = train_model_bi_lstm
@@ -69,7 +75,7 @@ sentence_length = 20 #句子长度
 initial_learning_rate = 0.01 #初始学习率
 min_learning_rate = 0.0001 #最小学习率
 decay_rate = 0.8 #学习衰减比例
-decay_step = 800 #学习率衰减步长
+decay_step = 1000 #学习率衰减步长
 max_grad_norm = 5 #最大截断值
 max_document_length = 20 #句子最大长度
 
