@@ -7,7 +7,7 @@ source_type = 1 # 1，ner_tv的字向量
                 # 2，ner_tv的词向量
 
 if source_type == 1:
-    if 'linux' not in sys.platform:
+    if 'linux' in sys.platform:
         word2vec_path = r'/data/python_project/ner_right_train_pingshu_train\w2v_ner.pkl'
         word2id_path = r'/data/python_project/ner_right_train_pingshu_train\word2id_ner.pkl'
         tv_data_path = r'/data/python_project/ner_right_train_pingshu_train\data'
