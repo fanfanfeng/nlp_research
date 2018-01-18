@@ -10,6 +10,7 @@ from tensorflow.contrib import rnn
 from ner.tv import ner_setting as ner_tv
 from ner.tv import data_util
 import pickle
+from sklearn.metrics import f1_score
 
 
 def change_gensim_mode2array():
@@ -36,12 +37,12 @@ class Model():
         self.initializer = initializers.xavier_initializer()
 
         with tf.variable_scope("word2vec_embedding"):
-            self.embedding_vec = tf.Variable(change_gensim_mode2array(), name='word2vec', dtype=tf.float32)
+            self.embedding_vec = tf.Variable(change_gensim_mode2array(), name='word2vec', dtype=tf.float32,trainable=False)
+            print(self.embedding_vec.name)
 
         self.inputs = tf.placeholder(dtype=tf.int32,shape=[None,self.max_sentence_len],name="inputs")
         self.labels = tf.placeholder(dtype=tf.int32,shape=[None,self.max_sentence_len],name='labels')
         self.dropout = tf.placeholder(dtype=tf.float32,name='dropout')
-        self.saver = tf.train.Saver(max_to_keep=3)
 
         self.global_step = tf.Variable(0, trainable=False, name="global_step")
 
@@ -50,19 +51,23 @@ class Model():
         ), self.min_learning_rate)
 
         self.optimizer = tf.train.AdamOptimizer(learning_rate=self.train_learning_rate)
+
         #tvars = tf.trainable_variables()
         #grads, _ = tf.clip_by_global_norm(tf.gradients(self.loss, tvars), self.max_grad_norm)
         #self.train_op = self.optimizer.apply_gradients(zip(grads, tvars), global_step=self.global_step)
 
     def logits_and_loss(self):
         with tf.variable_scope("word2vec_embedding"):
+            #embedding_vec = tf.Variable(change_gensim_mode2array(), name='word2vec', dtype=tf.float32,
+                                             #trainable=True)
             inputs_embedding = tf.nn.embedding_lookup(self.embedding_vec,self.inputs)
             lengths = self.get_length(self.inputs)
             lengths = tf.cast(lengths, tf.int32)
         lstm_outputs = self.biLSTM_layer(inputs_embedding,lengths)
         logits = self.project_layer(lstm_outputs)
         loss = self.loss_layer(logits,lengths)
-
+        with tf.control_dependencies(None):
+            loss = tf.identity(loss)
         return loss,logits,lengths
 
 
@@ -162,19 +167,18 @@ class Model():
 
 
     def test_accuraty(self,lengths,scores,trans_matrix,labels):
-        correct_num = 0
-        total_labels = 0
+        total_labels = []
+        predict_labels = []
         for score_, length_, label_ in zip(scores, lengths, labels):
             if length_ == 0:
                 continue
             score = score_[:length_]
             path, _ = crf.viterbi_decode(score, trans_matrix)
             label_path = label_[:length_]
-            correct_num += np.sum(np.equal(path, label_path))
-            total_labels += length_
+            predict_labels.extend(path)
+            total_labels.extend(label_path)
 
-        accuracy = 100.0 * correct_num / float(total_labels)
-        return accuracy
+        return total_labels,predict_labels
 
     def average_gradients(self,tower_grads):
         avarage_grads = []
@@ -196,32 +200,35 @@ num_gpus = 1
 TOWER_NAME = 'tower'
 log_device_placement = False
 def train():
-    with tf.Graph().as_default(),tf.device('/cpu:0'):
+    g = tf.Graph()
+    with g.as_default(),tf.device('/cpu:0'):
         model_obj = Model()
-
         tower_grads = []
-        with tf.variable_scope("train"):
-            for i in range(num_gpus):
-                with tf.device('/gpu:%d' % i):
-                    with tf.name_scope("%s_%d" % (TOWER_NAME,i)):
-                        loss,_,_ = model_obj.logits_and_loss()
-                        tf.get_variable_scope().reuse_variables()
-                        grads = model_obj.optimizer.compute_gradients(loss)
-                        tower_grads.append(grads)
+        for i in range(num_gpus):
+            with tf.device('/gpu:%d' % i):
+                with tf.name_scope("%s_%d" % (TOWER_NAME,i)):
+                    loss,_,_ = model_obj.logits_and_loss()
+                    grads = model_obj.optimizer.compute_gradients(loss)
+                    #tf.get_variable_scope().reuse_variables()
+
+                    tower_grads.append(grads)
+
         grads = model_obj.average_gradients(tower_grads)
         train_op = model_obj.optimizer.apply_gradients(grads,global_step=model_obj.global_step)
 
-        with tf.variable_scope("train",reuse=True):
-            _, test_logits, test_lengths = model_obj.logits_and_loss()
+        tf.get_variable_scope().reuse_variables()
+        _, test_logits, test_lengths = model_obj.logits_and_loss()
+        print("trans_model:",model_obj.trans.name)
 
         sess = tf.Session(config=tf.ConfigProto(
             allow_soft_placement = True,
             log_device_placement = log_device_placement
-        ))
-
+        ),graph=g)
+        model_obj.saver = tf.train.Saver(max_to_keep=3)
         model_obj.model_restore(sess)
         data_manager = data_util.BatchManager(ner_tv.tv_data_path, ner_tv.batch_size)
 
+        best_f1 = 0
         for epoch in range(model_obj.train_epoch):
             print("start epoch {}".format(str(epoch)))
             average_loss = 0
@@ -235,23 +242,46 @@ def train():
                     average_loss = 0
 
                 if step % ner_tv.valid_every == 0:
-                    total_accuracy = 0
-                    total_batch = 0
+                    real_total_labels = []
+                    predict_total_labels = []
                     for test_inputs, test_labels in data_manager.test_iterbatch():
                         feed_dict = model_obj.create_feed_dict(inputs=test_inputs, labels=test_labels, is_train=False)
                         logits_test_var,lengths_test_var,trans_matrix = sess.run([test_logits,test_lengths,model_obj.trans],feed_dict=feed_dict)
-                        accuracy = model_obj.test_accuraty(lengths_test_var,logits_test_var,trans_matrix,test_labels)
-                        total_accuracy += accuracy
-                        total_batch += 1
-                    if total_batch != 0:
-                        mean_accuracy = total_accuracy / total_batch
-                    else:
-                        mean_accuracy = 0
-                    print("iteration:{},NER accuracy:{:>9.6f}".format(epoch, mean_accuracy))
-                    model_obj.saver.save(sess, model_obj.model_save_path, global_step=step)
+                        real_labels,predict_labels= model_obj.test_accuraty(lengths_test_var,logits_test_var,trans_matrix,test_labels)
+                        real_total_labels.extend(real_labels)
+                        predict_total_labels.extend(predict_labels)
+                    f1_score_value = f1_score(real_total_labels,predict_total_labels,labels=[0,1,2,3],average='micro')
+                    print("iteration:{},NER ,f1 score:{:>9.6f}".format(epoch, f1_score_value))
+                    if best_f1 < f1_score_value:
+                        print("mew best f1_score,save model ")
+                        model_obj.saver.save(sess, model_obj.model_save_path, global_step=step)
 
+import os
+
+def make_pb_file_from_model():
+    #g = tf.Graph()
+    #with g.as_default(),tf.device('/cpu:0'):
+    model_obj = Model()
+    _,logits, lengths = model_obj.logits_and_loss()
+    print("Model trans_matrix:",model_obj.trans.name)
+    sess = tf.Session()
+    model_obj.saver = tf.train.Saver()
+    model_obj.model_restore(sess)
+    print(model_obj.trans)
+    output_tensor = []
+    output_tensor.append(model_obj.trans.name.replace(":0", ""))
+    output_tensor.append(lengths.name.replace(":0", ""))
+    output_tensor.append(logits.name.replace(":0", ""))
+    output_tensor.append(model_obj.dropout.name.replace(":0", ""))
+
+
+    output_graph_with_weight = tf.graph_util.convert_variables_to_constants(sess, sess.graph_def, output_tensor)
+    with tf.gfile.FastGFile(os.path.join(ner_tv.train_model_bi_lstm, "weight_ner.pb"),
+                            'wb') as gf:
+        gf.write(output_graph_with_weight.SerializeToString())
 
 if __name__ == '__main__':
+    #make_pb_file_from_model()
     train()
 
 
