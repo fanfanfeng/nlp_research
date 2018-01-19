@@ -37,7 +37,7 @@ class Model():
         self.initializer = initializers.xavier_initializer()
 
         with tf.variable_scope("word2vec_embedding"):
-            self.embedding_vec = tf.Variable(change_gensim_mode2array(), name='word2vec', dtype=tf.float32,trainable=False)
+            self.embedding_vec = tf.Variable(change_gensim_mode2array(), name='word2vec', dtype=tf.float32,trainable=True)
             print(self.embedding_vec.name)
 
         self.inputs = tf.placeholder(dtype=tf.int32,shape=[None,self.max_sentence_len],name="inputs")
@@ -214,7 +214,9 @@ def train():
                     tower_grads.append(grads)
 
         grads = model_obj.average_gradients(tower_grads)
+        no_word2vec_grads = [temp_grads for temp_grads in grads if not temp_grads[1].name.startswith('word2vec_embedding')]
         train_op = model_obj.optimizer.apply_gradients(grads,global_step=model_obj.global_step)
+        train_op_no_word2vec = model_obj.optimizer.apply_gradients(no_word2vec_grads,global_step=model_obj.global_step)
 
         tf.get_variable_scope().reuse_variables()
         _, test_logits, test_lengths = model_obj.logits_and_loss()
@@ -234,7 +236,10 @@ def train():
             average_loss = 0
             for train_inputs, train_labels in data_manager.train_iterbatch():
                 feed_dict = model_obj.create_feed_dict(inputs=train_inputs,labels=train_labels,is_train=True)
-                step, loss_val,_ = sess.run([model_obj.global_step,loss,train_op],feed_dict=feed_dict)
+                if epoch > 10:
+                    step, loss_val, _ = sess.run([model_obj.global_step, loss, train_op_no_word2vec], feed_dict=feed_dict)
+                else:
+                    step, loss_val,_ = sess.run([model_obj.global_step,loss,train_op],feed_dict=feed_dict)
                 average_loss += loss_val
                 if step % ner_tv.show_every == 0:
                     average_loss = average_loss / ner_tv.show_every
