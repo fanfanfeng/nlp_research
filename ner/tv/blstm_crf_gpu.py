@@ -36,9 +36,8 @@ class Model():
         self.min_learning_rate = ner_tv.min_learning_rate
         self.initializer = initializers.xavier_initializer()
 
-        with tf.variable_scope("word2vec_embedding"):
-            self.embedding_vec = tf.Variable(change_gensim_mode2array(), name='word2vec', dtype=tf.float32,trainable=True)
-            print(self.embedding_vec.name)
+        self.embedding_vec = tf.Variable(change_gensim_mode2array(), name='word2vec', dtype=tf.float32,trainable=True)
+        print(self.embedding_vec.name)
 
         self.inputs = tf.placeholder(dtype=tf.int32,shape=[None,self.max_sentence_len],name="inputs")
         self.labels = tf.placeholder(dtype=tf.int32,shape=[None,self.max_sentence_len],name='labels')
@@ -57,7 +56,7 @@ class Model():
         #self.train_op = self.optimizer.apply_gradients(zip(grads, tvars), global_step=self.global_step)
 
     def logits_and_loss(self):
-        with tf.variable_scope("word2vec_embedding"):
+        with tf.variable_scope("word2vec_embedding",reuse=True):
             #embedding_vec = tf.Variable(change_gensim_mode2array(), name='word2vec', dtype=tf.float32,
                                              #trainable=True)
             inputs_embedding = tf.nn.embedding_lookup(self.embedding_vec,self.inputs)
@@ -231,12 +230,12 @@ def train():
         data_manager = data_util.BatchManager(ner_tv.tv_data_path, ner_tv.batch_size)
 
         best_f1 = 0
-        for epoch in range(model_obj.train_epoch):
+        for epoch in range(0):
             print("start epoch {}".format(str(epoch)))
             average_loss = 0
             for train_inputs, train_labels in data_manager.train_iterbatch():
                 feed_dict = model_obj.create_feed_dict(inputs=train_inputs,labels=train_labels,is_train=True)
-                if epoch > 10:
+                if epoch < 10:
                     step, loss_val, _ = sess.run([model_obj.global_step, loss, train_op_no_word2vec], feed_dict=feed_dict)
                 else:
                     step, loss_val,_ = sess.run([model_obj.global_step,loss,train_op],feed_dict=feed_dict)
@@ -255,12 +254,13 @@ def train():
                         real_labels,predict_labels= model_obj.test_accuraty(lengths_test_var,logits_test_var,trans_matrix,test_labels)
                         real_total_labels.extend(real_labels)
                         predict_total_labels.extend(predict_labels)
-                    f1_score_value = f1_score(real_total_labels,predict_total_labels,labels=[0,1,2,3],average='micro')
+                    f1_score_value = f1_score(real_total_labels,predict_total_labels,labels=list(np.arange(17)),average='micro')
                     print("iteration:{},NER ,f1 score:{:>9.6f}".format(epoch, f1_score_value))
                     if best_f1 < f1_score_value:
                         print("mew best f1_score,save model ")
                         model_obj.saver.save(sess, model_obj.model_save_path, global_step=step)
                         best_f1 = f1_score_value
+    make_pb_file_from_model()
 
 import os
 
@@ -273,7 +273,7 @@ def make_pb_file_from_model():
     sess = tf.Session()
     model_obj.saver = tf.train.Saver()
     model_obj.model_restore(sess)
-    print(model_obj.trans)
+    print(lengths.name)
     output_tensor = []
     output_tensor.append(model_obj.trans.name.replace(":0", ""))
     output_tensor.append(lengths.name.replace(":0", ""))

@@ -80,9 +80,9 @@ max_grad_norm = 5 #最大截断值
 max_document_length = 20 #句子最大长度
 
 #训练相关参数
-num_epochs = 200 #重复训练的次数
+num_epochs = 40 #重复训练的次数
 valid_num = 3000 #用于验证模型的测试集数目
-show_every = 20 #没训练10次，验证模型
+show_every = 40 #没训练10次，验证模型
 valid_every = 200 #每训练100次，在测试集上面验证模型
 checkpoint_every = 400 #没训练200，保存模型
 

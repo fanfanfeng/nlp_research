@@ -27,7 +27,7 @@ class Meta_Load():
         self.tran_tensor = self.sess.graph.get_operation_by_name('crf_loss/transitions').outputs[0]
 
     def predict(self,text):
-        words_list = list(jieba.cut(text))
+        words_list = list(text)
         words = " ".join(words_list)
         tokens = [int(self.word2id_dict[token]) for token in words.split(" ") if token != "" and token in self.word2id_dict]
 
