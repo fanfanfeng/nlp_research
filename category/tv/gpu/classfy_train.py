@@ -1,4 +1,7 @@
 # create by fanfan on 2018/1/23 0023
+import sys
+project_path = r'/data/python_project/nlp_research'
+sys.path.append(project_path)
 from category.tv.gpu import classfiy_input
 from category.tv.gpu.clasfiy_model import Attention_lstm_model
 from category.tv.gpu import classfy_setting
@@ -6,8 +9,7 @@ import tensorflow as tf
 import time
 from datetime import datetime
 from sklearn.metrics import f1_score
-import sys
-sys.path.append(classfy_setting.project_path)
+
 
 num_gpus = 1
 TOWER_NAME = 'tower'
