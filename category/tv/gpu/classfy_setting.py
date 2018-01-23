@@ -10,11 +10,13 @@ if 'linux' not in sys.platform:
     word2id_path = r'E:\tv_category\train_and_test\word2id_classify.pkl'
     train_data_path = r'E:\tv_category\train_and_test\classify_train.txt'
     test_data_path = r'E:\tv_category\train_and_test\classify_test.txt'
+    project_path = r'E:\tv_category\nlp_research'
 else:
     word2vec_path = r'/data/python_project/train_and_test/word2vec_classify.pkl'
     word2id_path = r'/data/python_project/train_and_test/word2id_classify.pkl'
     train_data_path = r'/data/python_project/train_and_test/classify_train.txt'
     test_data_path = r'/data/python_project/train_and_test/classify_test.txt'
+    project_path = r'/data/python_project/nlp_research'
 
 
 if use_net_work == 1:

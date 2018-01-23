@@ -6,6 +6,8 @@ import tensorflow as tf
 import time
 from datetime import datetime
 from sklearn.metrics import f1_score
+import sys
+sys.path.append(classfy_setting.project_path)
 
 num_gpus = 1
 TOWER_NAME = 'tower'
