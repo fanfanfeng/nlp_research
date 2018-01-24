@@ -21,7 +21,7 @@ def train():
         global_step = tf.get_variable(
             'global_step', [],
             initializer=tf.constant_initializer(0), trainable=False)
-        total_step = classfy_setting.batch_size * classfy_setting.num_epochs
+        total_step = classfy_setting.total_epochs_per * classfy_setting.num_epochs
         decay_steps = total_step * classfy_setting.min_learning_rate / classfy_setting.initial_learning_rate
         # Decay the learning rate exponentially based on the number of steps.
         lr = tf.train.exponential_decay(classfy_setting.initial_learning_rate,
@@ -67,8 +67,8 @@ def train():
         tf.train.start_queue_runners(sess=sess)
 
         best_f1 = 0
+        print("开始训练")
         for step in range(total_step):
-            print("step  {}".format(step + 1))
             start_time = time.time()
             feed_dict = {model.dropout:classfy_setting.dropout}
             if step < int(total_step*0.7):
