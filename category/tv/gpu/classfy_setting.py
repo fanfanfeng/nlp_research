@@ -10,7 +10,6 @@ if 'linux' not in sys.platform:
     word2id_path = r'E:\tv_category\train_and_test\word2id_classify.pkl'
     train_data_path = r'E:\tv_category\train_and_test\classify_train.txt'
     test_data_path = r'E:\tv_category\train_and_test\classify_test.txt'
-
 else:
     word2vec_path = r'/data/python_project/train_and_test/word2vec_classify.pkl'
     word2id_path = r'/data/python_project/train_and_test/word2id_classify.pkl'
@@ -42,9 +41,9 @@ hidden_layer_num = 2 #lstm的层数8=
 dropout = 0.5 #dropout的概率值
 batch_size = 500 #每次批量学习的数目
 sentence_length = 20 #句子长度
-initial_learning_rate = 0.1 #初始学习率
+initial_learning_rate = 0.01 #初始学习率
 min_learning_rate = 0.0001 #最小学习率
-decay_rate = 0.5 #学习衰减比例
+decay_rate = 0.7 #学习衰减比例
 decay_step = 3000 #学习率衰减步长
 max_grad_norm = 5 #最大截断值
 max_document_length = 20 #句子最大长度
@@ -52,5 +51,5 @@ max_document_length = 20 #句子最大长度
 #训练相关参数
 num_epochs = 30 #重复训练的次数
 show_every = 30 #没训练50次，验证模型
-valid_every = 300 #每训练100次，在测试集上面验证模型
+valid_every = 400 #每训练100次，在测试集上面验证模型
 total_epochs_per = 3000 # 一轮训练数

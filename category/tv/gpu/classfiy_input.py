@@ -12,9 +12,10 @@ def distorted_inputs(data_path, batch_size):
     whole_list = tf.train.shuffle_batch(decoded,
                            batch_size= batch_size,
                            capacity= batch_size * 50,
-                           min_after_dequeue= batch_size,
+                           min_after_dequeue= batch_size * 10,
                             num_threads=4)
     features = tf.transpose(tf.stack(whole_list[0:classfy_setting.max_document_length]))
+    features = tf.reverse(features,axis=[1])
     label = tf.transpose(tf.stack(whole_list[classfy_setting.max_document_length:]))
     label = tf.reshape(label,(batch_size,))
     return features,label
@@ -31,7 +32,8 @@ if __name__ == '__main__':
             # while not coord.should_stop():
             while True:
                 feature_val,label_val = sess.run([feature,label])
-                print(label_val)
+                print(feature_val)
+                break
 
         except tf.errors.OutOfRangeError:
             print('Done reading')

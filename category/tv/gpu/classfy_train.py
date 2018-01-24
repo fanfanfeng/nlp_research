@@ -73,7 +73,7 @@ def train():
         while current_step < total_step:
             start_time = time.time()
             feed_dict = {model.dropout:classfy_setting.dropout}
-            if current_step < int(total_step*0.7):
+            if current_step < int(total_step*0.5):
                 _, loss_value = sess.run([train_op_no_word2vec, loss], feed_dict)
             else:
                 _,loss_value= sess.run([train_op,loss],feed_dict)
@@ -104,8 +104,12 @@ def train():
             current_step = int(global_step.eval(session=sess))
 
         # 将权重固话到graph中去
-        tf.get_variable_scope().reuse_variables()
+        #tf.get_variable_scope().reuse_variables()
+    with tf.Session() as sess:
+        model = Attention_lstm_model()
         _, logits_out = model.tower_loss(scope=None, input_x=model.input_x, input_y=model.input_y)
+        saver = tf.train.Saver(tf.global_variables())
+        model.restore_model(sess,saver)
         output_tensor = []
         output_tensor.append(logits_out.name.replace(":0", ""))
         print(logits_out.name.replace(":0", ""))
