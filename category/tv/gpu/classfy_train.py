@@ -21,6 +21,7 @@ def train():
         global_step = tf.get_variable(
             'global_step', [],
             initializer=tf.constant_initializer(0), trainable=False)
+        total_step = classfy_setting.num_epochs * classfy_setting.total_epochs_per
         # Decay the learning rate exponentially based on the number of steps.
         lr = tf.train.exponential_decay(classfy_setting.initial_learning_rate,
                                         global_step,
@@ -78,8 +79,8 @@ def train():
                 num_example_per_step = classfy_setting.batch_size * num_gpus
                 examples_per_sec = num_example_per_step / duration
                 sec_per_batch = duration / num_gpus
-                format_str = "%s: step %d, loss = %.2f (%.1f examples/sec; %.3f sec /batch)"
-                print(format_str % (datetime.now(), step, loss_value, examples_per_sec, sec_per_batch))
+                format_str = "%s: step %d,learnging rate %s, loss = %.2f (%.1f examples/sec; %.3f sec /batch)"
+                print(format_str % (datetime.now(), step,lr.eval(), loss_value, examples_per_sec, sec_per_batch))
 
                 #graph_writer.add_summary(summary_op, step)
             if (step+1) % classfy_setting.valid_every == 0  :
