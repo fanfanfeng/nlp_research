@@ -67,23 +67,25 @@ def train():
 
         best_f1 = 0
         print("开始训练")
-        for step in range(total_step):
+        current_step = global_step.eval(session = sess)
+        while current_step < total_step:
             start_time = time.time()
             feed_dict = {model.dropout:classfy_setting.dropout}
-            if step < int(total_step*0.7):
+            if current_step < int(total_step*0.7):
                 _, loss_value = sess.run([train_op_no_word2vec, loss], feed_dict)
             else:
                 _,loss_value= sess.run([train_op,loss],feed_dict)
             duration = time.time() - start_time
-            if (step+1) % classfy_setting.show_every == 0:
+            if (current_step+1) % classfy_setting.show_every == 0:
                 num_example_per_step = classfy_setting.batch_size * num_gpus
                 examples_per_sec = num_example_per_step / duration
                 sec_per_batch = duration / num_gpus
                 format_str = "%s: step %d,learnging rate %s, loss = %.2f (%.1f examples/sec; %.3f sec /batch)"
-                print(format_str % (datetime.now(), step,lr.eval(), loss_value, examples_per_sec, sec_per_batch))
+                print(format_str % (datetime.now(), current_step, lr.eval(session=sess), loss_value, examples_per_sec, sec_per_batch))
+
 
                 #graph_writer.add_summary(summary_op, step)
-            if (step+1) % classfy_setting.valid_every == 0  :
+            if (current_step+1) % classfy_setting.valid_every == 0  :
                 feed_dict = {model.dropout:1.0}
                 prediction_total = []
                 target_total = []
@@ -92,9 +94,9 @@ def train():
                     prediction_total.extend(prediction_val)
                     target_total.extend(target_val)
                 f1 = f1_score(target_total,prediction_total,labels=[1,2,3,4],average='micro')
-                print("验证模型, 训练步数 {} , f值 {:g}".format(step, f1))
+                print("验证模型, 训练步数 {} , f值 {:g}".format(current_step, f1))
                 if best_f1 < f1:
-                    path = saver.save(sess, classfy_setting.train_model_bi_lstm, step)
+                    path = saver.save(sess, classfy_setting.train_model_bi_lstm, current_step)
                     print("模型保存到{}".format(path))
                     best_f1 = f1
 
