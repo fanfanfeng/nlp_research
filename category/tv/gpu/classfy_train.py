@@ -9,6 +9,7 @@ import tensorflow as tf
 import time
 from datetime import datetime
 from sklearn.metrics import f1_score
+import os
 
 
 num_gpus = 1
@@ -28,6 +29,7 @@ def train():
                                         classfy_setting.decay_step,
                                         classfy_setting.decay_rate,
                                         staircase=True)
+        lr = tf.maximum(lr,classfy_setting.min_learning_rate)
         # Create an optimizer that performs gradient descent.
         optimizer = tf.train.GradientDescentOptimizer(lr)
 
@@ -96,9 +98,21 @@ def train():
                 f1 = f1_score(target_total,prediction_total,labels=[1,2,3,4],average='micro')
                 print("验证模型, 训练步数 {} , f值 {:g}".format(current_step, f1))
                 if best_f1 < f1:
-                    path = saver.save(sess, classfy_setting.train_model_bi_lstm, current_step)
+                    path = saver.save(sess, classfy_setting.train_model_bi_lstm, int(current_step))
                     print("模型保存到{}".format(path))
                     best_f1 = f1
+            current_step = global_step.eval(session=sess)
+
+        # 将权重固话到graph中去
+        tf.get_variable_scope().reuse_variables()
+        _, logits_out = model.tower_loss(scope=None, input_x=model.input_x, input_y=model.input_y)
+        output_tensor = []
+        output_tensor.append(logits_out.name.replace(":0", ""))
+        print(logits_out.name.replace(":0", ""))
+        output_graph_with_weight = tf.graph_util.convert_variables_to_constants(sess, sess.graph_def, output_tensor)
+        with tf.gfile.FastGFile(os.path.join(classfy_setting.graph_model_bi_lstm, "weight_classify.pb"),
+                                'wb') as gf:
+            gf.write(output_graph_with_weight.SerializeToString())
 
 
 
