@@ -21,12 +21,10 @@ def train():
         global_step = tf.get_variable(
             'global_step', [],
             initializer=tf.constant_initializer(0), trainable=False)
-        total_step = classfy_setting.total_epochs_per * classfy_setting.num_epochs
-        decay_steps = total_step * classfy_setting.min_learning_rate / classfy_setting.initial_learning_rate
         # Decay the learning rate exponentially based on the number of steps.
         lr = tf.train.exponential_decay(classfy_setting.initial_learning_rate,
                                         global_step,
-                                        decay_steps,
+                                        classfy_setting.decay_step,
                                         classfy_setting.decay_rate,
                                         staircase=True)
         # Create an optimizer that performs gradient descent.
