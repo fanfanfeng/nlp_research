@@ -11,7 +11,7 @@ def distorted_inputs(data_path, batch_size):
     whole_list = tf.train.shuffle_batch(decoded,
                                         batch_size=batch_size,
                                         capacity=batch_size * 50,
-                                        min_after_dequeue=batch_size,
+                                        min_after_dequeue=batch_size * 10,
                                         num_threads=4)
     features = tf.transpose(tf.stack(whole_list[0:ner_setting.max_document_length]))
     label = tf.transpose(tf.stack(whole_list[ner_setting.max_document_length:]))

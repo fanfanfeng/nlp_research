@@ -8,7 +8,7 @@ from ner.tv.gpu import ner_setting
 from ner.tv.gpu import ner_model
 import time
 from datetime import datetime
-from sklearn.metrics import f1_score
+from sklearn.metrics import classification_report
 import numpy as np
 import os
 
@@ -83,12 +83,13 @@ def train():
                                                                           trans_matrix, target_y)
                     real_total_labels.extend(real_labels)
                     predict_total_labels.extend(predict_labels)
-                f1_score_value = f1_score(real_total_labels, predict_total_labels, labels=list(np.arange(17)),average='micro')
-                print("iteration:{},NER ,f1 score:{:>9.6f}".format(epoch, f1_score_value))
-                if best_f1 < f1_score_value:
+                classification_report(real_total_labels, predict_total_labels, labels=list(np.arange(17)))
+                precition = np.sum(np.equal(real_total_labels,predict_total_labels))/len(predict_total_labels)
+                print("iteration:{},NER ,precition score:{:>9.6f}".format(epoch, precition))
+                if best_f1 < precition:
                     print("mew best f1_score,save model ")
                     saver.save(sess, model.model_save_path, global_step=epoch)
-                    best_f1 = f1_score_value
+                    best_f1 = precition
 
     with tf.Session(tf.ConfigProto(
             allow_soft_placement = True,
