@@ -49,7 +49,7 @@ max_grad_norm = 5 #最大截断值
 max_document_length = 20 #句子最大长度
 
 #训练相关参数
-num_epochs = 30 #重复训练的次数
+num_epochs = 15  #重复训练的次数
 show_every = 30 #没训练50次，验证模型
 valid_every = 400 #每训练100次，在测试集上面验证模型
 total_epochs_per = 3000 # 一轮训练数

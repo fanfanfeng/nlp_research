@@ -1,11 +1,18 @@
 # create by fanfan on 2017/10/11 0011
 from category.tv.gpu import classfy_setting
 import tensorflow as tf
-from category.tv import data_util
 import jieba
 import numpy as np
 from collections import OrderedDict
 import  time
+import pickle
+def load_word2id():
+    word2id_pkl_path = classfy_setting.word2id_path
+    word2id_dict = None
+    with open(word2id_pkl_path,'rb') as f:
+        word2id_dict = pickle.load(f, encoding='iso-8859-1')
+
+    return  word2id_dict
 
 class Meta_Load():
     def __init__(self):
@@ -19,14 +26,14 @@ class Meta_Load():
         self._init__tensor()
         end = time.time()
         print("time Cost load model:%f",end - start)
-        self.word2id_dict = data_util.load_word2id()
+        self.word2id_dict = load_word2id()
 
 
     def _init__tensor(self):
         self.drouput_tensor = self.sess.graph.get_operation_by_name("dropout").outputs[0]
         self.input_x_tensor = self.sess.graph.get_operation_by_name("Placeholder").outputs[0]
 
-        self.logit_tensor = self.sess.graph.get_operation_by_name("softmax_layer_1/logits").outputs[0]
+        self.logit_tensor = self.sess.graph.get_operation_by_name("softmax_layer/logits").outputs[0]
 
     def predict(self,text):
         words = list(jieba.cut(text))
