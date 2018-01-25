@@ -39,7 +39,9 @@ tag_to_id = {"O": 0,
              }
 
 id_to_tag = { item[1]:item[0] for item in tag_to_id.items()}
-
+tagnames = []
+for i in range(17):
+    tagnames.append(id_to_tag[i])
 
 #模型参数
 tags_num = 17#分类的数目
@@ -59,7 +61,7 @@ max_document_length = 20 #句子最大长度
 num_epochs = 30 #重复训练的次数
 step_per_epochs = 2000
 show_ervery = 50 #每训练50步，打印训练的loss
-checkpoint_every = 200 #没训练200，保存模型
+checkpoint_every = 300 #没训练200，保存模型
 
 
 

@@ -22,7 +22,7 @@ def train():
     with tf.Graph().as_default(),tf.device("/cpu:0"):
         model = ner_model.Model()
         global_step = tf.Variable(0,trainable=False,name='global_step')
-        lr = tf.train.exponential_decay(ner_setting.initial_learning_rate,global_step=global_step,decay_steps=ner_setting.decay_step,decay_rate=ner_setting.decay_rate)
+        lr = tf.train.exponential_decay(ner_setting.initial_learning_rate,global_step=global_step,decay_steps=ner_setting.decay_step,decay_rate=ner_setting.decay_rate,staircase=True)
         lr = tf.maximum(lr,ner_setting.min_learning_rate)
         optimizer = tf.train.AdamOptimizer(learning_rate=lr)
 
@@ -83,7 +83,7 @@ def train():
                                                                           trans_matrix, target_y)
                     real_total_labels.extend(real_labels)
                     predict_total_labels.extend(predict_labels)
-                classification_report(real_total_labels, predict_total_labels, labels=list(np.arange(17)))
+                print(classification_report(real_total_labels, predict_total_labels, labels=list(np.arange(17)),target_names=ner_setting.tagnames))
                 precition = np.sum(np.equal(real_total_labels,predict_total_labels))/len(predict_total_labels)
                 print("iteration:{},NER ,precition score:{:>9.6f}".format(epoch, precition))
                 if best_f1 < precition:
