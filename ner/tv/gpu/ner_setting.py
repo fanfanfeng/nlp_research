@@ -3,9 +3,10 @@ import os
 import sys
 
 if 'linux' in sys.platform:
-    word2vec_path = r'/data/python_project/ner_right_train_pingshu_train/w2v_ner.pkl'
-    word2id_path = r'/data/python_project/ner_right_train_pingshu_train/word2id_ner.pkl'
-    tv_data_path = r'/data/python_project/ner_right_train_pingshu_train/data'
+    word2vec_path = r'E:\tv_category\train_and_test\word2vec_ner.pkl'
+    word2id_path = r'E:\tv_category\train_and_test\word2id_ner.pkl'
+    train_data_path = r'E:\tv_category\train_and_test\ner_train.txt'
+    test_data_path = r'E:\tv_category\train_and_test\ner_test.txt'
 else:
     word2vec_path = r'E:\tv_category\train_and_test\word2vec_ner.pkl'
     word2id_path = r'E:\tv_category\train_and_test\word2id_ner.pkl'
