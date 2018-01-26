@@ -30,6 +30,8 @@ def read_data(path,max_length = 20,test=False):
             line_list = line.strip().split(' ')
             words_id = line_list[:ner_setting.max_document_length]
             tags_id = line_list[ner_setting.max_document_length:]
+            words_id = [int(x) for x in words_id]
+            tags_id = [int(y) for y in tags_id]
 
             if  words_id and len(tags_id) == len(words_id):
                 if test == False:
@@ -46,8 +48,7 @@ def read_data(path,max_length = 20,test=False):
                 #count =0
                 #break
 
-    input_x = [int(x) for x in input_x]
-    input_y = [int(y) for y in input_y ]
+
 
     output_dict['input_x'] = np.array(input_x)
     output_dict['input_y'] = np.array(input_y)
