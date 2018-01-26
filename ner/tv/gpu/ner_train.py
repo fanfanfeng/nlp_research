@@ -43,7 +43,7 @@ def train():
         train_op_no_word2vec = optimizer.apply_gradients(no_word2vec_grads,global_step=global_step)
 
         tf.get_variable_scope().reuse_variables()
-        _,logits_test,length_test,transmatrix = model.logits_and_loss(test_x,test_x)
+        _,logits_test,length_test,transmatrix = model.logits_and_loss(test_x,test_y)
 
         saver = tf.train.Saver(tf.global_variables())
         sess = tf.Session(config=tf.ConfigProto(
@@ -76,7 +76,7 @@ def train():
                 feed_dict = { model.dropout:1.0 }
                 real_total_labels = []
                 predict_total_labels = []
-                for i in range(60):
+                for i in range(10):
                     logits_test_var, lengths_test_var, trans_matrix,target_y = sess.run(
                         [logits_test, length_test, transmatrix,test_y], feed_dict=feed_dict)
                     real_labels, predict_labels = model.test_accuraty(lengths_test_var, logits_test_var,
@@ -91,7 +91,7 @@ def train():
                     saver.save(sess, model.model_save_path, global_step=epoch)
                     best_f1 = precition
 
-    with tf.Session(tf.ConfigProto(
+    with tf.Session(config=tf.ConfigProto(
             allow_soft_placement = True,
             log_device_placement = log_device_placement,
         )) as sess:
