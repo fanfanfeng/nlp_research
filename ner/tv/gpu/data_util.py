@@ -58,7 +58,21 @@ def read_data(path,max_length = 20,test=False):
     return output_dict
 
 
+class BatchManagerTest(object):
+    def __init__(self,path,batch_size):
+        self.batch_size = batch_size
+        data_set = read_data(path)
+        self.input_x = data_set['input_x']
+        self.input_y = data_set['input_y']
+        self.epoch = int(len(self.input_x)/self.batch_size)
 
+
+
+    def iterbatch(self):
+        for i in range(self.epoch):
+            x = self.input_x[self.batch_size * i: self.batch_size*(i+1)]
+            y = self.input_y[self.batch_size * i: self.batch_size*(i+1)]
+            yield x,y
 
 
 

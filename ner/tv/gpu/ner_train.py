@@ -9,8 +9,10 @@ from ner.tv.gpu import ner_model
 import time
 from datetime import datetime
 from sklearn.metrics import classification_report
+from sklearn.metrics import f1_score
 import numpy as np
 import os
+from ner.tv.gpu import data_util
 
 
 num_gpus = 1
@@ -27,7 +29,6 @@ def train():
         optimizer = tf.train.AdamOptimizer(learning_rate=lr)
 
         train_x,train_y = ner_input.distorted_inputs([ner_setting.train_data_path],ner_setting.batch_size)
-        test_x,test_y = ner_input.distorted_inputs([ner_setting.test_data_path],ner_setting.batch_size)
 
         tower_grads = []
         for i in range(num_gpus):
@@ -43,7 +44,7 @@ def train():
         train_op_no_word2vec = optimizer.apply_gradients(no_word2vec_grads,global_step=global_step)
 
         tf.get_variable_scope().reuse_variables()
-        _,logits_test,length_test,transmatrix = model.logits_and_loss(test_x,test_y)
+        _, logits_test, length_test, trans_matrix_test = model.logits_and_loss(input_x=model.inputs, input_y=model.labels)
 
         saver = tf.train.Saver(tf.global_variables())
         sess = tf.Session(config=tf.ConfigProto(
@@ -56,6 +57,7 @@ def train():
         best_f1 = 0
         total_step = ner_setting.num_epochs * ner_setting.step_per_epochs
         print("开始训练")
+        test_manager = data_util.BatchManagerTest(ner_setting.test_data_path, ner_setting.batch_size)
         for epoch in range(total_step):
             start_time = time.time()
             train_feed_dict = {model.dropout:ner_setting.dropout}
@@ -73,23 +75,23 @@ def train():
                 print(format_str % (datetime.now(), epoch + 1, lr.eval(session=sess), loss_value, examples_per_sec, sec_per_batch))
 
             if ( epoch+1) % ner_setting.checkpoint_every == 0  :
-                feed_dict = { model.dropout:1.0 }
                 real_total_labels = []
                 predict_total_labels = []
-                for i in range(10):
-                    logits_test_var, lengths_test_var, trans_matrix,target_y = sess.run(
-                        [logits_test, length_test, transmatrix,test_y], feed_dict=feed_dict)
+                for test_x,test_y in test_manager.iterbatch():
+                    feed_dict = {model.dropout: 1.0, model.inputs:test_x}
+                    logits_test_var, lengths_test_var, trans_matrix = sess.run(
+                        [logits_test, length_test, trans_matrix_test], feed_dict=feed_dict)
                     real_labels, predict_labels = model.test_accuraty(lengths_test_var, logits_test_var,
-                                                                          trans_matrix, target_y)
+                                                                          trans_matrix, test_y)
                     real_total_labels.extend(real_labels)
                     predict_total_labels.extend(predict_labels)
                 print(classification_report(real_total_labels, predict_total_labels, labels=list(np.arange(17)),target_names=ner_setting.tagnames))
-                precition = np.sum(np.equal(real_total_labels,predict_total_labels))/len(predict_total_labels)
-                print("iteration:{},NER ,precition score:{:>9.6f}".format(epoch, precition))
-                if best_f1 < precition:
+                f1_score_value = f1_score(real_total_labels, predict_total_labels, labels=list(np.arange(17)),average='micro')
+                print("iteration:{},NER ,precition score:{:>9.6f}".format(epoch, f1_score_value))
+                if best_f1 < f1_score_value:
                     print("mew best f1_score,save model ")
                     saver.save(sess, model.model_save_path, global_step=epoch)
-                    best_f1 = precition
+                    best_f1 = f1_score_value
 
     with tf.Session(config=tf.ConfigProto(
             allow_soft_placement = True,
