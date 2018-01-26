@@ -46,6 +46,8 @@ def read_data(path,max_length = 20,test=False):
                 #count =0
                 #break
 
+    input_x = [int(x) for x in input_x]
+    input_y = [int(y) for y in input_y ]
 
     output_dict['input_x'] = np.array(input_x)
     output_dict['input_y'] = np.array(input_y)
