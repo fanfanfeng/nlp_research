@@ -11,7 +11,10 @@ class Meta_Load():
     def __init__(self):
         start = time.time()
 
-        self.sess = tf.Session()
+        self.sess = tf.Session(config=tf.ConfigProto(
+            allow_soft_placement=True,
+            log_device_placement=False
+        ))
         self.load_model(self.sess)
         self._init__tensor()
         end = time.time()

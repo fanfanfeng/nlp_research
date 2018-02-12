@@ -30,7 +30,8 @@ graph_model_bi_lstm = train_model_bi_lstm
 attention_size = 300
 
 #标签列表
-label_list = ['CHAT',"STORYTELL","CROSSTALK","ESSAY"] #['JOKE', 'CHAT', 'STOCK', 'TVINSTRUCTION', 'BAIKE', 'SETTING', 'PLAYER', 'VIDEO', 'MUSIC', 'APP', 'INSTRUCTION','WEATHER',"STORYTELL","CROSSTALK","ESSAY"]
+
+label_list = ['CHAT',"CROSSTALK","STORYTELL","ESSAY","weather",'traintickets'] #['JOKE', 'CHAT', 'STOCK', 'TVINSTRUCTION', 'BAIKE', 'SETTING', 'PLAYER', 'VIDEO', 'MUSIC', 'APP', 'INSTRUCTION','WEATHER',"STORYTELL","CROSSTALK","ESSAY"]
 index2label = {i:l.strip() for i,l in enumerate(label_list)}
 
 #模型参数
