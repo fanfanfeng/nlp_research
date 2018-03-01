@@ -5,7 +5,7 @@ import sys
 from tensorflow.python.platform import gfile
 import numpy as np
 
-from seq2seq.seq2seq_dynamic.movie_name import config
+from seq2seq.seq2seq_basic import config
 
 _PAD = '_PAD'
 _GO = '_GO'
@@ -182,7 +182,7 @@ def prepare_data_for_model():
 
 
 
-def pad_sentence_batch(sentence_batch, pad_int,max_sentence):
+def pad_sentence_batch(sentence_batch, pad_int,max_sentence=config.max_seq_length):
     '''
     对batch中的序列进行补全，保证batch中的每行都有相同的sequence_length
 
@@ -192,7 +192,7 @@ def pad_sentence_batch(sentence_batch, pad_int,max_sentence):
     '''
     return [sentence + [pad_int] * (max_sentence - len(sentence)) for sentence in sentence_batch]
 
-def read_data(tokenized_data_path,max_size=15):
+def read_data(tokenized_data_path,max_size=config.max_seq_length):
     """Read data-en from source file and put into buckets.
 
       Args:

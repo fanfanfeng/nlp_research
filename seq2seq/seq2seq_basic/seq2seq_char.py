@@ -133,7 +133,6 @@ def decoding_layer(target_letter_to_int,decoding_embedding_size,num_layers,rnn_s
         predicting_helper = seq2seq.GreedyEmbeddingHelper(decoder_embeddings,start_tokens,target_letter_to_int['<EOS>'])
         predicting_decoder = seq2seq.BasicDecoder(cell,predicting_helper,encoder_state,output_layer)
         (predicting_decoder_output,_,_)= seq2seq.dynamic_decode(predicting_decoder,impute_finished=True,maximum_iterations=max_target_sequence_length)
-
     return training_decoder_output,predicting_decoder_output
 
 def seq2seq_model(input_data,target,target_sequence_length,max_target_sequence_length,source_sequence_length,
