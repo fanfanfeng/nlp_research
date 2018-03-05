@@ -11,10 +11,10 @@ if 'linux' not in sys.platform:
     train_data_path = r'E:\tv_category\train_and_test\classify_train.txt'
     test_data_path = r'E:\tv_category\train_and_test\classify_test.txt'
 else:
-    word2vec_path = r'/data/python_project/train_and_test/word2vec_classify.pkl'
-    word2id_path = r'/data/python_project/train_and_test/word2id_classify.pkl'
-    train_data_path = r'/data/python_project/train_and_test/classify_train.txt'
-    test_data_path = r'/data/python_project/train_and_test/classify_test.txt'
+    word2vec_path = r'/data/python_project/output/classify/word2vec.pkl'
+    word2id_path = r'/data/python_project/output/classify/word2id.pkl'
+    train_data_path = r'/data/python_project/output/classify/classify_train.txt'
+    test_data_path = r'/data/python_project/output/classify/classify_test.txt'
 
 
 
@@ -27,11 +27,11 @@ elif use_net_work == 0:
 elif use_net_work == 3:
     train_model_bi_lstm = r"Model/bilstm_attention_cnn_model/"
 graph_model_bi_lstm = train_model_bi_lstm
-attention_size = 300
+attention_size = 200
 
 #标签列表
 
-label_list = ['CHAT',"CROSSTALK","STORYTELL","ESSAY","weather",'traintickets'] #['JOKE', 'CHAT', 'STOCK', 'TVINSTRUCTION', 'BAIKE', 'SETTING', 'PLAYER', 'VIDEO', 'MUSIC', 'APP', 'INSTRUCTION','WEATHER',"STORYTELL","CROSSTALK","ESSAY"]
+label_list = ['CHAT',"CROSSTALK","STORYTELL","ESSAY","weather",'traintickets','live_channel_epg'] #['JOKE', 'CHAT', 'STOCK', 'TVINSTRUCTION', 'BAIKE', 'SETTING', 'PLAYER', 'VIDEO', 'MUSIC', 'APP', 'INSTRUCTION','WEATHER',"STORYTELL","CROSSTALK","ESSAY"]
 index2label = {i:l.strip() for i,l in enumerate(label_list)}
 
 #模型参数
