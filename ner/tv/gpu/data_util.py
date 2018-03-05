@@ -68,11 +68,18 @@ class BatchManagerTest(object):
 
 
 
-    def iterbatch(self):
+    def iterbatch(self,shuffle=False):
+        if shuffle:
+            self.shuffle_data()
         for i in range(self.epoch):
             x = self.input_x[self.batch_size * i: self.batch_size*(i+1)]
             y = self.input_y[self.batch_size * i: self.batch_size*(i+1)]
             yield x,y
+
+    def shuffle_data(self):
+        shuffle_index = np.random.permutation(np.arange(len(self.input_x)))
+        self.input_x = self.input_x[shuffle_index]
+        self.input_y = self.input_y[shuffle_index]
 
 
 

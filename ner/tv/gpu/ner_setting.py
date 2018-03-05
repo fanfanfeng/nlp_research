@@ -3,10 +3,10 @@ import os
 import sys
 
 if 'linux' in sys.platform:
-    word2vec_path = r'/data/python_project/train_and_test/word2vec_ner.pkl'
-    word2id_path = r'/data/python_project/train_and_test/word2id_ner.pkl'
-    train_data_path = r'/data/python_project/train_and_test/ner_train.txt'
-    test_data_path = r'/data/python_project/train_and_test/ner_test.txt'
+    word2vec_path = r'/data/python_project/output/ner/word2vec.pkl'
+    word2id_path = r'/data/python_project/output/ner/word2id.pkl'
+    train_data_path = r'/data/python_project/output/ner/ner_train.txt'
+    test_data_path = r'/data/python_project/output/ner/ner_test.txt'
 else:
     word2vec_path = r'E:\tv_category\train_and_test\word2vec_ner.pkl'
     word2id_path = r'E:\tv_category\train_and_test\word2id_ner.pkl'
@@ -50,7 +50,7 @@ hidden_neural_size = 256 #lstm隐层神经元数目
 hidden_layer_num = 2 #lstm的层数8=
 dropout = 0.5 #dropout的概率值
 batch_size = 500 #每次批量学习的数目
-initial_learning_rate = 0.1 #初始学习率
+initial_learning_rate = 0.01 #初始学习率
 min_learning_rate = 0.0001 #最小学习率
 decay_rate = 0.7 #学习衰减比例
 decay_step = 2000 #学习率衰减步长

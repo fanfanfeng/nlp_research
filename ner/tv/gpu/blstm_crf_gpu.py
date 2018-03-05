@@ -227,28 +227,29 @@ def train():
         ),graph=g)
         model_obj.saver = tf.train.Saver(max_to_keep=3)
         model_obj.model_restore(sess)
-        data_manager = data_util.BatchManager(ner_tv.train_data_path, ner_tv.batch_size)
+        data_manager_train = data_util.BatchManagerTest(ner_tv.train_data_path, ner_tv.batch_size)
+        data_manager_test= data_util.BatchManagerTest(ner_tv.test_data_path, ner_tv.batch_size)
 
         best_f1 = 0
-        for epoch in range(0):
+        for epoch in range(30):
             print("start epoch {}".format(str(epoch)))
             average_loss = 0
-            for train_inputs, train_labels in data_manager.train_iterbatch():
+            for train_inputs, train_labels in data_manager_train.iterbatch(shuffle=True):
                 feed_dict = model_obj.create_feed_dict(inputs=train_inputs,labels=train_labels,is_train=True)
                 if epoch < 10:
                     step, loss_val, _ = sess.run([model_obj.global_step, loss, train_op_no_word2vec], feed_dict=feed_dict)
                 else:
                     step, loss_val,_ = sess.run([model_obj.global_step,loss,train_op],feed_dict=feed_dict)
                 average_loss += loss_val
-                if step % ner_tv.show_every == 0:
-                    average_loss = average_loss / ner_tv.show_every
+                if step % ner_tv.show_ervery == 0:
+                    average_loss = average_loss / ner_tv.show_ervery
                     print("iteration:{} step:{},NER loss:{:>9.6f}".format(epoch, step, average_loss))
                     average_loss = 0
 
-                if step % ner_tv.valid_every == 0:
+                if step % ner_tv.checkpoint_every == 0:
                     real_total_labels = []
                     predict_total_labels = []
-                    for test_inputs, test_labels in data_manager.test_iterbatch():
+                    for test_inputs, test_labels in data_manager_test.iterbatch():
                         feed_dict = model_obj.create_feed_dict(inputs=test_inputs, labels=test_labels, is_train=False)
                         logits_test_var,lengths_test_var,trans_matrix = sess.run([test_logits,test_lengths,model_obj.trans],feed_dict=feed_dict)
                         real_labels,predict_labels= model_obj.test_accuraty(lengths_test_var,logits_test_var,trans_matrix,test_labels)
