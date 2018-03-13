@@ -21,11 +21,12 @@ class Meta_Load():
     def _init__tensor(self):
         self.encoder_inputs_length_tensor = self.sess.graph.get_operation_by_name('encoder_inputs_length').outputs[0]
         self.encoder_inputs_tensor = self.sess.graph.get_operation_by_name('encoder_inputs').outputs[0]
-
-
         self.keep_prob_tensor = self.sess.graph.get_operation_by_name("keep_prob").outputs[0]
 
-        self.decoder_tensor = self.sess.graph.get_operation_by_name("decoder/ExpandDims").outputs[0]
+        if config.beam_with > 1:
+            self.decoder_tensor = self.sess.graph.get_operation_by_name("decoder/decoder/transpose").outputs[0]
+        else:
+            self.decoder_tensor = self.sess.graph.get_operation_by_name("decoder/ExpandDims").outputs[0]
 
     def predict(self,text):
         words_list = list(jieba.cut(text))

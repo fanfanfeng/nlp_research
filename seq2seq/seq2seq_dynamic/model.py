@@ -56,10 +56,17 @@ class Seq2SeqModel(object):
 
         self.optimizer = config.optimizer
         self.learning_rate = config.learning_rate
+
+
         self.max_gradient_norm = config.max_gradient_norm
         self.global_step = tf.Variable(0,trainable=False,name='global_step')
         self.global_epoch_step = tf.Variable(0,trainable=False,name='global_epoch_step')
         self.global_epoch_step_op = tf.assign(self.global_epoch_step,self.global_epoch_step + 1)
+
+        lr = tf.train.exponential_decay(0.1, global_step=self.global_step,
+                                        decay_steps= 500, decay_rate=0.8,
+                                        staircase=True)
+        self.learning_rate= tf.maximum(lr, 0.0001)
 
         self.dtype = tf.float16 if config.use_fp16 else tf.float32
         self.keep_prob_placeholder = tf.placeholder(self.dtype,shape=[],name='keep_prob')
@@ -137,20 +144,39 @@ class Seq2SeqModel(object):
             #将输入的句子转化为上下文向量
             # encoder_outputs: [batch_size, max_time_step, cell_output_size]
             # encoder_state: [batch_size, cell_output_size]
-            self.encoder_outputs,self.encoder_last_state = tf.nn.dynamic_rnn(
-                cell=self.encoder_cell,
+            self.encoder_outputs,self.encoder_last_state = tf.nn.bidirectional_dynamic_rnn(
+                rnn.MultiRNNCell([self.build_single_cell() for _ in range(self.depth)]),
+                rnn.MultiRNNCell([self.build_single_cell() for _ in range(self.depth)]),
                 inputs=self.encoder_inputs_embedded,
                 sequence_length=self.encoder_inputs_length,
                 dtype=self.dtype,
                 time_major=False
             )
+            self.encoder_outputs = tf.concat(self.encoder_outputs, 2)
+            encoder_states = []
+
+            for i in range(self.depth):
+                if isinstance(self.encoder_last_state[0][i], tf.contrib.rnn.LSTMStateTuple):
+                    encoder_state_c = tf.concat(values=(self.encoder_last_state[0][i].c, self.encoder_last_state[0][i].c), axis=1,
+                                                name="encoder_fw_state_c")
+                    encoder_state_h = tf.concat(values=(self.encoder_last_state[0][i].h, self.encoder_last_state[0][i].h), axis=1,
+                                                name="encoder_fw_state_h")
+                    encoder_state = tf.contrib.rnn.LSTMStateTuple(c=encoder_state_c, h=encoder_state_h)
+                elif isinstance(self.encoder_last_state[0][i], tf.Tensor):
+                    encoder_state = tf.concat(values=(self.encoder_last_state[0][i], self.encoder_last_state[1][i]), axis=1,
+                                              name='bidirectional_concat')
+
+                encoder_states.append(encoder_state)
+
+            self.encoder_last_state = tuple(encoder_states)
 
 
-    def build_single_cell(self):
+
+    def build_single_cell(self,layer=1):
         cell_type = rnn.LSTMCell
         if (self.cell_type.lower() == 'gru'):
             cell_type = rnn.GRUCell
-        cell = cell_type(self.hidden_units)
+        cell = cell_type(self.hidden_units * layer)
 
 
         if self.use_dropout:
@@ -168,7 +194,7 @@ class Seq2SeqModel(object):
 
             # Input projection layer to feed embedded inputs to the cell
             # ** Essential when use_residual=True to match input/output dims
-            input_layer = Dense(self.hidden_units,dtype=self.dtype,name='input_projection')
+            input_layer = Dense(self.hidden_units*2,dtype=self.dtype,name='input_projection')
 
             # Output projection layer to convert cell_outpus to logits
             output_layer = Dense(self.num_decoder_symbols,name='output_project')
@@ -190,6 +216,7 @@ class Seq2SeqModel(object):
                                                         helper=training_helper,
                                                         initial_state=self.decoder_initial_state,
                                                         output_layer=output_layer)
+
 
                 #Maximum decoder time_steps in current batch
                 max_decoder_length = tf.reduce_max(self.decoder_inputs_length_train)
@@ -315,7 +342,7 @@ class Seq2SeqModel(object):
             )
 
         # 创建decoder_cell
-        self.decoder_cell_list = [self.build_single_cell() for _ in range(self.depth)]
+        self.decoder_cell_list = [self.build_single_cell(layer=2) for _ in range(self.depth)]
 
         def attn_decoder_input_fn(inputs,attention):
             if not self.attn_input_feeding:
@@ -474,6 +501,9 @@ class Seq2SeqModel(object):
                                           None,None,True)
         input_feed[self.keep_prob_placeholder.name] = 1.0
         output_feed = self.decoder_pred_decode
+        for key in input_feed.keys():
+            print(key)
+        print(self.decoder_pred_decode.name)
         predicts = sess.run(output_feed,input_feed)
 
         outputs = []
