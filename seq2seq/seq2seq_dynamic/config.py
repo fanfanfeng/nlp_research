@@ -18,14 +18,14 @@ target_vocabulary = 'data/vocab{}.in'.format(vocabulary_size) # target的词库�
 cell_type =  'gru'             # 编码跟解码截断的RNN cell类型 , 默认: lstm
 attention_type =  'bahdanau'    # 注意力机制类型: (bahdanau, luong), 默认: bahdanau
 hidden_units =  256            # 隐层神经元个数
-depth = 2                       # 神经网络的层数
-embedding_size =  200           # 编码跟解码输出的向量Embedding dimensions
+depth = 3                       # 神经网络的层数
+embedding_size =  300           # 编码跟解码输出的向量Embedding dimensions
 num_encoder_symbols = 40000     # source 的词库大小
 num_decoder_symbols = 40000    # target 的词库大小
 use_residual  = True            # 在每一层之间是不是使用残差网络
-attn_input_feeding = False      # Use input feeding method in attentional decoder
+attn_input_feeding = True      # Use input feeding method in attentional decoder
 use_dropout =  True             # 是否对rnn cell使用dropout
-dropout_rate = 0.3              # Dropout probability for input/output/state units (0.0: no dropout)')
+dropout_rate = 0.5              # Dropout probability for input/output/state units (0.0: no dropout)')
 
 # 训练参数
 learning_rate = 0.0002          # 学习率

@@ -349,7 +349,7 @@ class Seq2SeqModel(object):
                 return inputs
 
             # Essential when use_residual=True
-            _input_layer = Dense(self.hidden_units,dtype=self.dtype,name='attn_input_feeding')
+            _input_layer = Dense(self.hidden_units*2,dtype=self.dtype,name='attn_input_feeding')
             return _input_layer(array_ops.concat([inputs,attention],-1))
 
 
