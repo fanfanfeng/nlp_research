@@ -30,6 +30,7 @@ class Attention_lstm_model():
         self.hidden_neural_size = classfy_setting.hidden_neural_size
         # self.input_dim_size = flags.input_dim_size
         self.hidden_layer_num = classfy_setting.hidden_layer_num
+        self.embedding_dim = classfy_setting.embedding_dim
         # self.w2v =
         self.train_model_save_path = classfy_setting.train_model_bi_lstm
         self.input_x = tf.placeholder(tf.int32, [None, self.sentence_length])
@@ -44,6 +45,12 @@ class Attention_lstm_model():
 
         # with tf.name_scope("embedding_layer"):
         self.W = tf.Variable(load_word2vec(), name="w", trainable=True)
+
+        self.num_filters = 128
+        self.filter_sizes = [3, 4, 5]
+        self.l2_reg_lambda = 0.001
+
+        self.fc_hidden_size = 200
 
     def lstm_fw(self):
         lstm_fw = rnn.LSTMCell(self.hidden_neural_size)
@@ -105,15 +112,34 @@ class Attention_lstm_model():
             #inputs = tf.unstack(inputs,self.sentence_length,1)
             rnn_features = self.bilstm_layer(inputs)
 
+        with tf.name_scope("embedding_layer_cnn"):
+            inputs_cnn = tf.nn.embedding_lookup(self.W, input_x)
+            # 因为卷积操作conv2d的input要求4个维度的tensor, 所以需要给embedding结果增加一个维度来适应conv2d的input要求
+            # 传入的-1表示在最后位置插入, 得到[None, sequence_length, embedding_size, 1]
+            inputs_cnn = tf.expand_dims(inputs_cnn, -1)
+
+        with tf.variable_scope("cnn_layer"):
+            cnn_features, num_filters_total = self.cnn_filter_pool_layer(inputs_cnn)
+
+
         with tf.name_scope('attention_layer'):
             rnn_features = tf.reshape(rnn_features,[-1,self.sentence_length,self.hidden_neural_size *2])
             rnn_attention_outputs = self.attention_layer(rnn_features,self.attention_size,self.l2_reg)
             rnn_attention_outputs = tf.nn.dropout(rnn_attention_outputs, self.dropout)
 
+        with tf.variable_scope("fc_bn_layer"):
+            out_put_total = tf.concat([rnn_attention_outputs,cnn_features],axis=1)
+            w_fc = tf.get_variable("Weight_fc",shape=[self.hidden_neural_size*2 + num_filters_total,self.fc_hidden_size],initializer=tf.truncated_normal_initializer)
+            beta = tf.get_variable('beta_fc',shape=[self.fc_hidden_size],initializer=tf.truncated_normal_initializer)
+            h_fc = tf.matmul(out_put_total,w_fc,name='h_fc')
+            fc_bn = self.batchnorm(h_fc,beta)
+            self.fc_bn_relu = tf.nn.relu(fc_bn,name='relu')
+            fc_bn_drop = tf.nn.dropout(self.fc_bn_relu,self.dropout)
+
         with tf.name_scope('softmax_layer'):
-            softmax_w = tf.get_variable('softmax_w',[2 * self.hidden_neural_size,self.sentence_classes],dtype=tf.float32,initializer=tf.truncated_normal_initializer(mean=0.2,stddev=2))
+            softmax_w = tf.get_variable('softmax_w',[self.fc_hidden_size,self.sentence_classes],dtype=tf.float32,initializer=tf.truncated_normal_initializer(mean=0.2,stddev=2))
             softmax_b = tf.get_variable('softmax_b',[self.sentence_classes],dtype=tf.float32,initializer=tf.truncated_normal_initializer(mean=0.1,stddev=2))
-            logits = tf.add(tf.matmul(rnn_attention_outputs,softmax_w),softmax_b,name='logits')
+            logits = tf.add(tf.matmul(fc_bn_drop,softmax_w),softmax_b,name='logits')
 
         with tf.name_scope("output"):
             cross_entry = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=input_y)
@@ -135,6 +161,58 @@ class Attention_lstm_model():
             average_grads.append(grad_and_var)
         return average_grads
 
+
+    def cnn_filter_pool_layer(self,inputs):
+        pooled_outputs = []
+        for i,filter_size in enumerate(self.filter_sizes):
+            with tf.variable_scope('conv_maxpool_%s' % filter_size):
+                # 卷积层
+                filter_shape = [filter_size,self.embedding_dim,1,self.num_filters]
+                weight = tf.get_variable('weight',shape=filter_shape,initializer=tf.truncated_normal_initializer(stddev=0.1))
+                bias = tf.get_variable('bias',shape=[self.num_filters],dtype=tf.float32,initializer=tf.constant_initializer(0.1))
+
+                # 卷积操作, “VALID”表示使用narrow卷积，得到的结果大小为[batch, sequence_length - filter_size + 1, 1, num_filters]
+                conv = tf.nn.conv2d(inputs,weight,strides=[1,1,1,1],padding='VALID',name='conv')
+
+                h = tf.nn.relu(tf.nn.bias_add(conv,bias))
+
+                # 用max-pooling处理上层的输出结果,每一个卷积结果
+                # pooled的大小为[batch, 1, 1, num_filters]
+                pooled = tf.nn.max_pool(h,ksize=[1,self.sentence_length - filter_size + 1,1,1],strides=[1,1,1,1],padding='VALID',name='pool')
+                pooled_outputs.append(pooled)
+
+        with tf.variable_scope("full_connect_layer"):
+            # 全连接输出层
+            # 将上面的pooling层输出全连接到输出层
+            num_filters_total = self.num_filters * len(self.filter_sizes)
+
+            # 把相同filter_size的所有pooled结果concat起来，再将不同的filter_size之间的结果concat起来
+            # tf.concat按某一维度进行合并, h_pool的大小为[batch, 1, 1, num_filters_total]
+            self.h_pool = tf.concat(pooled_outputs,3)
+            self.h_pool_flat = tf.reshape(self.h_pool,[-1,num_filters_total])
+            self.h_drop = tf.nn.dropout(self.h_pool_flat,self.dropout)
+
+        return  self.h_drop,num_filters_total
+
+    def batchnorm(self,Ylogits,offset):
+        """batchnormalization.
+        Args:
+            Ylogits: 1D向量或者是3D的卷积结果。
+            num_updates: 迭代的global_step
+            offset：表示beta，全局均值；在 RELU 激活中一般初始化为 0.1。
+            scale：表示lambda，全局方差；在 sigmoid 激活中需要，这 RELU 激活中作用不大。
+            m: 表示batch均值；v:表示batch方差。
+            bnepsilon：一个很小的浮点数，防止除以 0.
+        Returns:
+            Ybn: 和 Ylogits 的维度一样，就是经过 Batch Normalization 处理的结果。
+            update_moving_everages：更新mean和variance，主要是给最后的 test 使用。
+        """
+        #exp_moving_avg = tf.train.ExponentialMovingAverage(0.999,self.global_step)
+        bnepsilon = 1e-5
+        mean,variance = tf.nn.moments(Ylogits,[0])
+        #update_moving_everages = exp_moving_avg.apply([mean,variance])
+        Ybn = tf.nn.batch_normalization(Ylogits,mean,variance,offset,None,bnepsilon)
+        return Ybn
 
     def restore_model(self,sess,saver):
         check_point = tf.train.get_checkpoint_state(self.train_model_save_path)

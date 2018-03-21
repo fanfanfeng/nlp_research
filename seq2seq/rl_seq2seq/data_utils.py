@@ -5,7 +5,7 @@ import sys
 from tensorflow.python.platform import gfile
 import numpy as np
 
-from seq2seq.rl_seq2seq import setting as config
+import config
 
 _PAD = '_PAD'
 _GO = '_GO'
@@ -182,7 +182,7 @@ def prepare_data_for_model():
 
 
 
-def pad_sentence_batch(sentence_batch, pad_int,max_sentence):
+def pad_sentence_batch(sentence_batch, pad_int,max_sentence=config.max_seq_length):
     '''
     对batch中的序列进行补全，保证batch中的每行都有相同的sequence_length
 
@@ -192,7 +192,7 @@ def pad_sentence_batch(sentence_batch, pad_int,max_sentence):
     '''
     return [sentence + [pad_int] * (max_sentence - len(sentence)) for sentence in sentence_batch]
 
-def read_data(tokenized_data_path,max_size=30):
+def read_data(tokenized_data_path,max_size=config.max_seq_length):
     """Read data-en from source file and put into buckets.
 
       Args:
@@ -218,7 +218,7 @@ def read_data(tokenized_data_path,max_size=30):
             target_ids = [int(x) for x in target.split()]
             #target_ids.append(EOS_ID)
 
-            if len(source_ids) < max_size and  len(target_ids) < max_size :
+            if len(source_ids) < max_size*3 and  len(target_ids) < max_size :
 
                 encode_length.append(len(source_ids))
                 decode_length.append(len(target_ids) )
@@ -313,7 +313,4 @@ def get_batches(targets, sources, batch_size, source_pad_int, target_pad_int):
 
 
 if __name__ == '__main__':
-    tran_batch_manager = BatchManager(config.data_path, 128)
-    for i in tran_batch_manager.iterbatch():
-        print(i)
-        break
+    prepare_data_for_model()
