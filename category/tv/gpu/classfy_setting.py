@@ -6,10 +6,10 @@ use_net_work = 1    # 0 lstm
                     # 3 lstm + attention + cnn
 
 if 'linux' not in sys.platform:
-    word2vec_path = r'E:\tv_category\train_and_test\word2vec_classify.pkl'
-    word2id_path = r'E:\tv_category\train_and_test\word2id_classify.pkl'
-    train_data_path = r'E:\tv_category\train_and_test\classify_train.txt'
-    test_data_path = r'E:\tv_category\train_and_test\classify_test.txt'
+    word2vec_path = r'E:\tv_category\output\output\classify\word2vec.pkl'
+    word2id_path = r'E:\tv_category\output\output\classify\word2id_classify.pkl'
+    train_data_path = r'E:\tv_category\output\output\classify\classify_train.txt'
+    test_data_path = r'E:\tv_category\output\output\classify\classify_test.txt'
 else:
     word2vec_path = r'/data/python_project/output/classify/word2vec.pkl'
     word2id_path = r'/data/python_project/output/classify/word2id.pkl'
@@ -31,7 +31,7 @@ attention_size = 200
 
 #标签列表
 
-label_list = ['CHAT',"CROSSTALK","STORYTELL","ESSAY","weather",'traintickets','live_channel_epg'] #['JOKE', 'CHAT', 'STOCK', 'TVINSTRUCTION', 'BAIKE', 'SETTING', 'PLAYER', 'VIDEO', 'MUSIC', 'APP', 'INSTRUCTION','WEATHER',"STORYTELL","CROSSTALK","ESSAY"]
+label_list = ['CHAT',"CROSSTALK","STORYTELL","ESSAY","weather",'traintickets','live_channel_epg','radio'] #['JOKE', 'CHAT', 'STOCK', 'TVINSTRUCTION', 'BAIKE', 'SETTING', 'PLAYER', 'VIDEO', 'MUSIC', 'APP', 'INSTRUCTION','WEATHER',"STORYTELL","CROSSTALK","ESSAY"]
 index2label = {i:l.strip() for i,l in enumerate(label_list)}
 
 #模型参数

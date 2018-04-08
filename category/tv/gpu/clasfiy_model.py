@@ -45,9 +45,10 @@ class Attention_lstm_model():
 
         # with tf.name_scope("embedding_layer"):
         self.W = tf.Variable(load_word2vec(), name="w", trainable=True)
+        self.W_cnn = tf.Variable(load_word2vec(), name="w_cnn", trainable=True)
 
         self.num_filters = 128
-        self.filter_sizes = [3, 4, 5]
+        self.filter_sizes = [1,2,3, 4, 5]
         self.l2_reg_lambda = 0.001
 
         self.fc_hidden_size = 200
@@ -63,7 +64,7 @@ class Attention_lstm_model():
         lstm_bw = rnn.DropoutWrapper(lstm_bw, self.dropout)
         return lstm_bw
 
-    def bilstm_layer(self,inputs):
+    def bilstm_layer(self,inputs,length):
 
         if self.hidden_layer_num >1:
             lstm_fw = rnn.MultiRNNCell([self.lstm_fw() for _ in range(self.hidden_layer_num)])
@@ -72,7 +73,7 @@ class Attention_lstm_model():
             lstm_fw = self.lstm_fw()
             lstm_bw = self.lstm_bw()
 
-        outputs,_ = tf.nn.bidirectional_dynamic_rnn(cell_fw=lstm_fw,cell_bw=lstm_bw,inputs=inputs,dtype=tf.float32)
+        outputs,_ = tf.nn.bidirectional_dynamic_rnn(cell_fw=lstm_fw,cell_bw=lstm_bw,inputs=inputs,sequence_length=length,dtype=tf.float32)
         outputs = tf.concat(outputs, 2)
         return outputs
 
@@ -102,18 +103,24 @@ class Attention_lstm_model():
         output = tf.reduce_sum(inputs * tf.reshape(alphas,[-1,sequence_length,1]),1)
         return output
 
+    def get_length(self,data):
+        #used = tf.sign(tf.reduce_max(tf.abs(data),reduction_indices=2))
+        #length = tf.reduce_sum(used,reduction_indices=1)
+        #length = tf.cast(length,tf.int32)
+        used = tf.sign(tf.abs(data))
+        length = tf.reduce_sum(used, reduction_indices=1)
+        length = tf.cast(length, tf.int32)
+        return length
 
     def tower_loss(self,scope,input_x,input_y):
         with tf.name_scope("embedding_layer"):
+            length = self.get_length(input_x)
             inputs = tf.nn.embedding_lookup(self.W,input_x)
             inputs = tf.nn.dropout(inputs,self.dropout,name="drouout_input")
-            # 对数据进行一些处理,把形状为(batch_size, n_steps, n_input)的输入变成长度为n_steps的列表,
-            # 而其中元素形状为(batch_size, n_input), 这样符合LSTM单元的输入格式
-            #inputs = tf.unstack(inputs,self.sentence_length,1)
-            rnn_features = self.bilstm_layer(inputs)
+            rnn_features = self.bilstm_layer(inputs,length)
 
         with tf.name_scope("embedding_layer_cnn"):
-            inputs_cnn = tf.nn.embedding_lookup(self.W, input_x)
+            inputs_cnn = tf.nn.embedding_lookup(self.W_cnn, input_x)
             # 因为卷积操作conv2d的input要求4个维度的tensor, 所以需要给embedding结果增加一个维度来适应conv2d的input要求
             # 传入的-1表示在最后位置插入, 得到[None, sequence_length, embedding_size, 1]
             inputs_cnn = tf.expand_dims(inputs_cnn, -1)
@@ -127,19 +134,17 @@ class Attention_lstm_model():
             rnn_attention_outputs = self.attention_layer(rnn_features,self.attention_size,self.l2_reg)
             rnn_attention_outputs = tf.nn.dropout(rnn_attention_outputs, self.dropout)
 
-        with tf.variable_scope("fc_bn_layer"):
-            out_put_total = tf.concat([rnn_attention_outputs,cnn_features],axis=1)
-            w_fc = tf.get_variable("Weight_fc",shape=[self.hidden_neural_size*2 + num_filters_total,self.fc_hidden_size],initializer=tf.truncated_normal_initializer)
-            beta = tf.get_variable('beta_fc',shape=[self.fc_hidden_size],initializer=tf.truncated_normal_initializer)
-            h_fc = tf.matmul(out_put_total,w_fc,name='h_fc')
-            fc_bn = self.batchnorm(h_fc,beta)
-            self.fc_bn_relu = tf.nn.relu(fc_bn,name='relu')
-            fc_bn_drop = tf.nn.dropout(self.fc_bn_relu,self.dropout)
+        out_put_total = tf.concat([rnn_attention_outputs, cnn_features], axis=1)
+
+        with tf.name_scope('hidden_layer'):
+            hidden_w = tf.get_variable('hidden_w',[self.hidden_neural_size*2 + num_filters_total,self.hidden_neural_size],dtype=tf.float32,initializer=tf.truncated_normal_initializer(mean=0.2,stddev=2))
+            hidden_b = tf.get_variable('hidden_b',[self.hidden_neural_size],dtype=tf.float32,initializer=tf.truncated_normal_initializer(mean=0.1,stddev=2))
+            hidden_output = tf.add(tf.matmul(out_put_total,hidden_w),hidden_b,name='hidden_output')
 
         with tf.name_scope('softmax_layer'):
-            softmax_w = tf.get_variable('softmax_w',[self.fc_hidden_size,self.sentence_classes],dtype=tf.float32,initializer=tf.truncated_normal_initializer(mean=0.2,stddev=2))
+            softmax_w = tf.get_variable('softmax_w',[self.hidden_neural_size,self.sentence_classes],dtype=tf.float32,initializer=tf.truncated_normal_initializer(mean=0.2,stddev=2))
             softmax_b = tf.get_variable('softmax_b',[self.sentence_classes],dtype=tf.float32,initializer=tf.truncated_normal_initializer(mean=0.1,stddev=2))
-            logits = tf.add(tf.matmul(fc_bn_drop,softmax_w),softmax_b,name='logits')
+            logits = tf.add(tf.matmul(hidden_output,softmax_w),softmax_b,name='logits')
 
         with tf.name_scope("output"):
             cross_entry = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=input_y)

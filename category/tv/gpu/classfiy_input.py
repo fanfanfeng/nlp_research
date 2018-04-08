@@ -15,7 +15,7 @@ def distorted_inputs(data_path, batch_size):
                            min_after_dequeue= batch_size * 10,
                             num_threads=4)
     features = tf.transpose(tf.stack(whole_list[0:classfy_setting.max_document_length]))
-    features = tf.reverse(features,axis=[1])
+    #features = tf.reverse(features,axis=[1])
     label = tf.transpose(tf.stack(whole_list[classfy_setting.max_document_length:]))
     label = tf.reshape(label,(batch_size,))
     return features,label
