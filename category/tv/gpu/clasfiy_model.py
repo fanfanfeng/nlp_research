@@ -136,19 +136,22 @@ class Attention_lstm_model():
 
         out_put_total = tf.concat([rnn_attention_outputs, cnn_features], axis=1)
 
-        with tf.name_scope('hidden_layer'):
-            hidden_w = tf.get_variable('hidden_w',[self.hidden_neural_size*2 + num_filters_total,self.hidden_neural_size],dtype=tf.float32,initializer=tf.truncated_normal_initializer(mean=0.2,stddev=2))
-            hidden_b = tf.get_variable('hidden_b',[self.hidden_neural_size],dtype=tf.float32,initializer=tf.truncated_normal_initializer(mean=0.1,stddev=2))
-            hidden_output = tf.add(tf.matmul(out_put_total,hidden_w),hidden_b,name='hidden_output')
+        l2_loss = 0
+        #with tf.name_scope('hidden_layer'):
+            #hidden_w = tf.get_variable('hidden_w',[self.hidden_neural_size*2 + num_filters_total,self.hidden_neural_size],dtype=tf.float32,initializer=tf.truncated_normal_initializer(mean=0.2,stddev=2))
+            #hidden_b = tf.get_variable('hidden_b',[self.hidden_neural_size],dtype=tf.float32,initializer=tf.truncated_normal_initializer(mean=0.1,stddev=2))
+            #hidden_output = tf.add(tf.matmul(out_put_total,hidden_w),hidden_b,name='hidden_output')
 
         with tf.name_scope('softmax_layer'):
-            softmax_w = tf.get_variable('softmax_w',[self.hidden_neural_size,self.sentence_classes],dtype=tf.float32,initializer=tf.truncated_normal_initializer(mean=0.2,stddev=2))
+            softmax_w = tf.get_variable('softmax_w',[self.hidden_neural_size*2 + num_filters_total,self.sentence_classes],dtype=tf.float32,initializer=tf.truncated_normal_initializer(mean=0.2,stddev=2))
             softmax_b = tf.get_variable('softmax_b',[self.sentence_classes],dtype=tf.float32,initializer=tf.truncated_normal_initializer(mean=0.1,stddev=2))
-            logits = tf.add(tf.matmul(hidden_output,softmax_w),softmax_b,name='logits')
+            l2_loss += tf.nn.l2_loss(softmax_w)
+            l2_loss += tf.nn.l2_loss(softmax_b)
+            logits = tf.add(tf.matmul(out_put_total,softmax_w),softmax_b,name='logits')
 
         with tf.name_scope("output"):
             cross_entry = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=input_y)
-            loss = tf.reduce_mean(cross_entry, name="loss")
+            loss = tf.reduce_mean(cross_entry, name="loss") + self.l2_reg_lambda * l2_loss
         return loss,logits
 
     def average_gradients(self,tower_grads):
