@@ -95,9 +95,9 @@ def train():
                     prediction_val ,target_val= sess.run([prediction,test_y],feed_dict=feed_dict)
                     prediction_total.extend(prediction_val)
                     target_total.extend(target_val)
-                f1 = f1_score(target_total,prediction_total,labels=[0,1,2,3,4,5,6],average='micro')
+                f1 = f1_score(target_total,prediction_total,labels=[0,1,2,3,4,5,6,7,8],average='micro')
                 print("验证模型, 训练步数 {} , f值 {:g}".format(current_step, f1))
-                print(classification_report(target_total,prediction_total,labels=[0,1,2,3,4,5,6],target_names=classfy_setting.label_list))
+                print(classification_report(target_total,prediction_total,labels=[0,1,2,3,4,5,6,7,8],target_names=classfy_setting.label_list))
                 if best_f1 < f1:
                     path = saver.save(sess, classfy_setting.train_model_bi_lstm, current_step)
                     print("模型保存到{}".format(path))

@@ -31,7 +31,7 @@ attention_size = 200
 
 #标签列表
 
-label_list = ['CHAT',"CROSSTALK","STORYTELL","ESSAY","weather",'traintickets','live_channel_epg','radio'] #['JOKE', 'CHAT', 'STOCK', 'TVINSTRUCTION', 'BAIKE', 'SETTING', 'PLAYER', 'VIDEO', 'MUSIC', 'APP', 'INSTRUCTION','WEATHER',"STORYTELL","CROSSTALK","ESSAY"]
+label_list = ['CHAT',"CROSSTALK","STORYTELL","ESSAY","weather",'traintickets','live_channel_epg','radio','mv'] #['JOKE', 'CHAT', 'STOCK', 'TVINSTRUCTION', 'BAIKE', 'SETTING', 'PLAYER', 'VIDEO', 'MUSIC', 'APP', 'INSTRUCTION','WEATHER',"STORYTELL","CROSSTALK","ESSAY"]
 index2label = {i:l.strip() for i,l in enumerate(label_list)}
 
 #模型参数
