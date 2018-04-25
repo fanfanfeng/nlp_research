@@ -3,7 +3,7 @@
 import sys
 import os
 import platform
-if 'window' in sys.platform:
+if 'win32' in sys.platform:
     ProjectDir = r"E:\git-project\nlp_research\DualLSTMEncoderRankModel"
 else:
     ProjectDir = r'/data/python_project/nlp_research/DualLSTMEncoderRankModel'
@@ -34,7 +34,7 @@ batch_size = 256
 numEpochs = 10
 
 
-cache_path = os.path.join(ProjectDir,'cache')
+cache_path = os.path.join(ProjectDir,'cache/')
 model_save_path = os.path.join(ProjectDir,'model/')
 tf_log_train_path = os.path.join(ProjectDir,"train")
 tf_log_valid_path = os.path.join(ProjectDir,"valid")

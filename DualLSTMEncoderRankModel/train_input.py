@@ -144,11 +144,13 @@ class BatchManager():
         for i in range(batchSize):
             # Unpack the sample
             sample = samples[i]
+            sample[0] = [int(item) for item in sample[0]]
+            sample[1] = [int(item) for item in sample[1]]
 
             batch.query_seqs.append(sample[0])
             batch.response_seqs.append(sample[1])
-            batch.query_length.append(len(batch.query_seqs[-1]))
-            batch.response_length.append(len(batch.response_seqs[-1]))
+            batch.query_length.append(len([int(item) for item in sample[0] if item!=0]))
+            batch.response_length.append(len([int(item) for item in sample[1] if item!=0]))
         return batch
 
 
@@ -160,16 +162,19 @@ class BatchManager():
         batchSize = len(samples)
         for i in range(batchSize):
             sample = samples[i]
+            sample[0] = [int(item) for item in sample[0]]
+            sample[1] = [int(item) for item in sample[1]]
             batch.query_seqs.append(sample[0])
-            batch.query_length.append(len(sample[0]))
+            batch.query_length.append(len([int(item) for item in sample[0] if item!=0]))
 
             batch.response_seqs.append(sample[1])
             batch.response_length.append(len(sample[1]))
 
             for j in range(config.ranksize-1):
                 sample = dataset[neg_responses[i][j]]
+                sample[1] = [int(item) for item in sample[1]]
                 batch.response_seqs.append(sample[1])
-                batch.response_length.append(len(sample[1]))
+                batch.response_length.append(len([int(item) for item in sample[1] if item!=0]))
         return batch
 
 
@@ -232,8 +237,10 @@ class BatchManager():
 
         for sample in self.total_data:
             sample = sample[1]
+            sample = [int(item) for item in sample]
             predictingResponseSeqs.append(sample)
-            predictingResponseLength.append(len(sample))
+            predictingResponseLength.append(len([item for item in sample if item !=0]))
+            break
         batch.response_seqs = predictingResponseSeqs
         batch.response_length = predictingResponseLength
         return batch

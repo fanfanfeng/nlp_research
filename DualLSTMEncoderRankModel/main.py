@@ -1,6 +1,8 @@
 # create by fanfan on 2018/4/13 0013
 
 # 第一步加载训练书籍
+import sys
+sys.path.append(r'/data/python_project/nlp_research')
 from DualLSTMEncoderRankModel.ranker import Ranker
 from DualLSTMEncoderRankModel import config
 from DualLSTMEncoderRankModel.train_input import BatchManager
@@ -56,8 +58,9 @@ def mainTrain(sess):
 
                 print('validation, Recall_%s@(1,3,5) = %s' % (config.ranksize, valid_losses))
                 ckpt_model_saver.save(sess, config.model_save_path)
+
             toc = datetime.datetime.now()
-            print("Epoch %d finished in %s seconds" % (epoch, toc - start_time))
+           # print("Epoch %d finished in %s seconds" % (epoch, toc - start_time))
 
         ##############################  test data ################################
         test_losses = [0,0,0]
@@ -79,7 +82,10 @@ def mainTrain(sess):
         init = tf.global_variables_initializer()
         cachesaver = tf.train.Saver()
         cachePath = config.cache_path
-        with tf.Session() as cache_sess:
+        with tf.Session(config=tf.ConfigProto(
+        allow_soft_placement=True,
+        log_device_placement=False
+    )) as cache_sess:
             cache_sess.run(init)
             save_path = cachesaver.save(cache_sess,config.cache_path)
             print("Cache saved in file:%s" % save_path)
