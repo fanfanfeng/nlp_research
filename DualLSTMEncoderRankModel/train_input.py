@@ -144,13 +144,13 @@ class BatchManager():
         for i in range(batchSize):
             # Unpack the sample
             sample = samples[i]
-            sample[0] = [int(item) for item in sample[0]]
-            sample[1] = [int(item) for item in sample[1]]
+            sample_0 = [int(item) for item in sample[0]]
+            sample_1 = [int(item) for item in sample[1]]
 
-            batch.query_seqs.append(sample[0])
-            batch.response_seqs.append(sample[1])
-            batch.query_length.append(len([int(item) for item in sample[0] if item!=0]))
-            batch.response_length.append(len([int(item) for item in sample[1] if item!=0]))
+            batch.query_seqs.append(sample_0)
+            batch.response_seqs.append(sample_1)
+            batch.query_length.append(len([int(item) for item in sample_0 if item!=0]))
+            batch.response_length.append(len([int(item) for item in sample_1 if item!=0]))
         return batch
 
 
@@ -162,19 +162,19 @@ class BatchManager():
         batchSize = len(samples)
         for i in range(batchSize):
             sample = samples[i]
-            sample[0] = [int(item) for item in sample[0]]
-            sample[1] = [int(item) for item in sample[1]]
-            batch.query_seqs.append(sample[0])
-            batch.query_length.append(len([int(item) for item in sample[0] if item!=0]))
+            sample_0 = [int(item) for item in sample[0]]
+            sample_1 = [int(item) for item in sample[1]]
+            batch.query_seqs.append(sample_0)
+            batch.query_length.append(len([int(item) for item in sample_0 if item!=0]))
 
-            batch.response_seqs.append(sample[1])
-            batch.response_length.append(len(sample[1]))
+            batch.response_seqs.append(sample_1)
+            batch.response_length.append(len(sample_1))
 
             for j in range(config.ranksize-1):
                 sample = dataset[neg_responses[i][j]]
-                sample[1] = [int(item) for item in sample[1]]
-                batch.response_seqs.append(sample[1])
-                batch.response_length.append(len([int(item) for item in sample[1] if item!=0]))
+                sample_1 = [int(item) for item in sample[1]]
+                batch.response_seqs.append(sample_1)
+                batch.response_length.append(len([int(item) for item in sample_1 if item!=0]))
         return batch
 
 
