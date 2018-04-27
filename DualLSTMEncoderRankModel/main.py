@@ -57,7 +57,7 @@ def mainTrain(sess):
                     valid_losses[i] = valid_losses[i] / len(batches_valid)
 
                 print('validation, Recall_%s@(1,3,5) = %s' % (config.ranksize, valid_losses))
-                ckpt_model_saver.save(sess, config.model_save_path)
+                ckpt_model_saver.save(sess, config.model_save_path,global_step=global_step)
 
             toc = datetime.datetime.now()
            # print("Epoch %d finished in %s seconds" % (epoch, toc - start_time))
