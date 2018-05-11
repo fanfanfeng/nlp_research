@@ -68,6 +68,7 @@ class Batch:
         # self.xxlength：encoding阶段调用 dynamic_rnn 时的一个 input_argument
         self.query_length = []
         self.response_length = []
+        self.labels = []
 
 class BatchManager():
     def __init__(self,data_path):
@@ -151,6 +152,8 @@ class BatchManager():
             batch.response_seqs.append(sample_1)
             batch.query_length.append(len([int(item) for item in sample_0 if item!=0]))
             batch.response_length.append(len([int(item) for item in sample_1 if item!=0]))
+            batch.labels.append(1)
+
         return batch
 
 

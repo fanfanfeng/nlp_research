@@ -4,24 +4,19 @@ import sys
 import os
 import platform
 if 'win32' in sys.platform:
-    ProjectDir = r"E:\git-project\nlp_research\DualLSTMEncoderRankModel"
+    ProjectDir = r"E:\git-project\nlp_research\chatbot-retrieval"
 else:
-    ProjectDir = r'/data/python_project/nlp_research/DualLSTMEncoderRankModel'
-
-# 语料设置
-corpus_data_path = os.path.join(ProjectDir,'data/xiaohuangji50w_nofenci.conv')
-corpus_processed_path = os.path.join(ProjectDir,r'data/xiaohangji_process.txt')
+    ProjectDir = r'/data/python_project/nlp_research/chatbot-retrieval'
 
 
 
-filter_num = 3
-max_vocab_size = 40000  #词库大小
+filter_num = 5
+max_vocab_size = 90000  #词库大小
 vocabulary_path = os.path.join(ProjectDir,'data/vocab_{}.txt'.format(max_vocab_size))
 embedding_size = 200
-max_seq_len = 20
+max_seq_len = 160
 
-#转化为id形式的存储
-corpus_to_id_path = os.path.join(ProjectDir,r'data/xiaohangji_process_to_ids_vocab{}.txt'.format(max_vocab_size))
+
 
 # 神经网络设置参数
 hiddenSize = 256
