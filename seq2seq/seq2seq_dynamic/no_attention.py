@@ -225,7 +225,7 @@ def get_batches(targets, sources, batch_size, source_pad_int, target_pad_int):
 
 
 import data_utils
-train_batch_manager = data_utils.BatchManager('data/train.txt.id40000.in',128)
+train_batch_manager = data_utils.BatchManager('data/train.txt-bak.id40000.in',128)
 test_batch_manager = data_utils.BatchManager("data/test.txt.id40000.in",128)
 
 display_step = 50  # 每隔50轮输出loss

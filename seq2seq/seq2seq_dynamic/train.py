@@ -12,6 +12,8 @@ import model
 import numpy as np
 import time
 import math
+from seq2seq.seq2seq_dynamic import seq2seq_model
+from seq2seq.seq2seq_dynamic import model_new
 
 
 
@@ -40,7 +42,7 @@ def train():
             tran_batch_manager = data_utils.BatchManager("data/train.txt.id40000.in", config.batch_size)
             test_batch_manager = data_utils.BatchManager("data/test.txt.id40000.in", config.batch_size)
             with tf.device('/gpu:0'):
-                model_obj = model.Seq2SeqModel(config,'train')
+                model_obj = model_new.Seq2SeqModel(config,'train')
                 model_obj.model_restore(sess)
                 print("开始训练")
                 loss = 0.0
