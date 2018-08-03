@@ -119,16 +119,16 @@ class Seq2SeqModel(object):
             self.encoder_inputs_embedded = input_layer(self.encoder_inputs_embedded)
 
             # 输入的句子也经过一层浓密型网络
-            self.input_layer_out = Dense(self.hidden_units * 2, dtype=self.dtype, name='input_projection')
+
             self.decoder_inputs_embedded = tf.nn.embedding_lookup(self.embeddings, self.decoder_inputs_train)
-            self.decoder_inputs_embedded = self.input_layer_out(self.decoder_inputs_embedded)
+            self.decoder_inputs_embedded = input_layer(self.decoder_inputs_embedded)
 
 
 
 
     def _build_network(self):
         # 编码层网络定义
-        self.encoder_outputs, self.encoder_last_state = build_encode(self.encoder_inputs_embedded,self.encoder_inputs_length,3,self.hidden_units,self.keep_prob_placeholder,self.use_residual)
+        self.encoder_outputs, self.encoder_last_state = build_encode(self.encoder_inputs_embedded,self.encoder_inputs_length,self.depth,self.hidden_units,self.keep_prob_placeholder,self.use_residual)
 
         # 解码层网络定义
         ## Decoder
@@ -164,7 +164,7 @@ class Seq2SeqModel(object):
     def build_decode(self):
         # build decoder and attention.
         with tf.variable_scope('decoder'):
-            self.decoder_cell,self.decoder_initial_state = build_decoder_cell(self.encoder_outputs,self.encoder_last_state,self.encoder_inputs_length,2,self.hidden_units,self.keep_prob_placeholder,self.use_residual,self.mode,self.beam_with,self.batch_size)
+            self.decoder_cell,self.decoder_initial_state = build_decoder_cell(self.encoder_outputs,self.encoder_last_state,self.encoder_inputs_length,self.depth,self.hidden_units,self.keep_prob_placeholder,self.use_residual,self.mode,self.beam_with,self.batch_size)
             # Output projection layer to convert cell_outpus to logits
             output_layer = Dense(self.num_decoder_symbols,name='output_project')
 
@@ -453,5 +453,5 @@ class Seq2SeqModel(object):
 
 if __name__ == '__main__':
     from seq2seq.seq2seq_dynamic import config
-    Seq2SeqModel(config,tf.contrib.learn.ModeKeys.INFER)
+    Seq2SeqModel(config,tf.contrib.learn.ModeKeys.TRAIN)
 
