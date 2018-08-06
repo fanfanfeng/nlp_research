@@ -29,9 +29,9 @@ def build_decoder_cell(encoder_outputs,encoder_last_state,encoder_inputs_length,
                                                         memory=memory,
                                                         memory_sequence_length=memory_sequence_length)
 
-        decoder_layer = layer_num
-        decoder_layer_residual = layer_num - 1
-        rnn_decoder_cell = build_cell_list(hidden_units,decoder_layer,decoder_layer_residual,keep_prob)
+        decoder_layer = int(layer_num/2)
+        decoder_layer_residual = decoder_layer- 1
+        rnn_decoder_cell = build_cell_list(hidden_units*2,decoder_layer,decoder_layer_residual,keep_prob)
 
         decoder_attention_cell = seq2seq.AttentionWrapper(
             cell=rnn_decoder_cell,

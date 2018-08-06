@@ -46,24 +46,24 @@ def build_encode(encoder_inputs_embedded,encoder_inputs_length,layer_num,hidden_
         encoder_outputs = tf.concat(encoder_outputs, 2)
 
         # 合并输入的states
-        #encoder_states = []
-        #for i in range(layer_num):
-        #    if isinstance(encoder_last_state[0][i], tf.contrib.rnn.LSTMStateTuple):
-        #        encoder_state_c = tf.concat(values=(encoder_last_state[0][i].c, encoder_last_state[1][i].c), axis=1,
-        #                                    name="encoder_fw_state_c")
-        #        encoder_state_h = tf.concat(values=(encoder_last_state[0][i].h, encoder_last_state[1][i].h), axis=1,
-        #                                    name="encoder_fw_state_h")
-        #        encoder_state = tf.contrib.rnn.LSTMStateTuple(c=encoder_state_c, h=encoder_state_h)
-        #    elif isinstance(encoder_last_state[0][i], tf.Tensor):
-        #        encoder_state = tf.concat(values=(encoder_last_state[0][i], encoder_last_state[1][i]), axis=1,
-        #                                  name='bidirectional_concat')
-        #    encoder_states.append(encoder_state)
-        #encoder_last_state = tuple(encoder_states)
+        encoder_states = []
+        for i in range(encoder_layer):
+            if isinstance(encoder_last_state[0][i], tf.contrib.rnn.LSTMStateTuple):
+                encoder_state_c = tf.concat(values=(encoder_last_state[0][i].c, encoder_last_state[1][i].c), axis=1,
+                                            name="encoder_fw_state_c")
+                encoder_state_h = tf.concat(values=(encoder_last_state[0][i].h, encoder_last_state[1][i].h), axis=1,
+                                            name="encoder_fw_state_h")
+                encoder_state = tf.contrib.rnn.LSTMStateTuple(c=encoder_state_c, h=encoder_state_h)
+            elif isinstance(encoder_last_state[0][i], tf.Tensor):
+                encoder_state = tf.concat(values=(encoder_last_state[0][i], encoder_last_state[1][i]), axis=1,
+                                          name='bidirectional_concat')
+            encoder_states.append(encoder_state)
+        encoder_last_state = tuple(encoder_states)
 
-        encoder_state = []
-        for layer_id in range(encoder_layer):
-            encoder_state.append(encoder_last_state[0][layer_id])  # forward
-            encoder_state.append(encoder_last_state[1][layer_id])  # backward
-        encoder_state = tuple(encoder_state)
+        #encoder_state = []
+        #for layer_id in range(encoder_layer):
+        #    encoder_state.append(encoder_last_state[0][layer_id])  # forward
+        #    encoder_state.append(encoder_last_state[1][layer_id])  # backward
+        #encoder_state = tuple(encoder_state)
 
-    return encoder_outputs,encoder_state
+    return encoder_outputs,encoder_last_state
