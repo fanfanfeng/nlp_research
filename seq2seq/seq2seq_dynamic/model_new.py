@@ -6,19 +6,20 @@ from tensorflow.python.layers.core import Dense,array_ops
 from tensorflow.python.util import nest
 from tensorflow.contrib import rnn
 from tensorflow.contrib import seq2seq
-from seq2seq.seq2seq_dynamic import config
+from seq2seq.seq2seq_dynamic.decoder import build_cell_list,build_decoder_cell
+from seq2seq.seq2seq_dynamic.encoder import build_bilstm_encode
 
 
 from seq2seq.seq2seq_dynamic import data_utils
 import math
 import os
-from seq2seq.seq2seq_dynamic.encoder import  build_encode
-from seq2seq.seq2seq_dynamic.decoder import build_decoder_cell
 
 
 class Seq2SeqModel(object):
     def __init__(self,config,model):
-        self.mode =model
+        assert  model.lower() in ['train','decode']
+        self.mode = model.lower()
+
         #初始化一些基本参数
         self._init_config(config)
 
@@ -29,21 +30,11 @@ class Seq2SeqModel(object):
         self._init_embeddings()
 
         #构建网络
-        result = self._build_network()
-
-        if self.mode == tf.contrib.learn.ModeKeys.TRAIN:
-            self.loss = result[1]
-        elif self.mode == tf.contrib.learn.ModeKeys.EVAL:
-            self.loss = result[1]
-        elif self.mode == tf.contrib.learn.ModeKeys.INFER:
-            self.infer_logits, _, self.final_context_state, self.sample_id = result
-        tf.summary.scalar('loss', result[1])
+        self._build_network()
 
 
-
-
-
-        self._init_optimizer()
+        if self.mode.lower() == "train":
+            self._init_optimizer()
 
         # Merge all the training summaries
         self.summary_op = tf.summary.merge_all()
@@ -63,7 +54,6 @@ class Seq2SeqModel(object):
         self.use_residual = config.use_residual
         self.attn_input_feeding = config.attn_input_feeding
         self.use_dropout = config.use_dropout
-        self.keep_prob = 1.0 - config.dropout_rate
 
         self.optimizer = config.optimizer
         self.learning_rate = config.learning_rate
@@ -71,38 +61,55 @@ class Seq2SeqModel(object):
 
         self.max_gradient_norm = config.max_gradient_norm
         self.global_step = tf.Variable(0,trainable=False,name='global_step')
+        self.global_epoch_step = tf.Variable(0,trainable=False,name='global_epoch_step')
+        self.global_epoch_step_op = tf.assign(self.global_epoch_step,self.global_epoch_step + 1)
 
+        lr = tf.train.exponential_decay(0.1, global_step=self.global_step,
+                                        decay_steps= 500, decay_rate=0.8,
+                                        staircase=True)
+        self.learning_rate= tf.maximum(lr, 0.0001)
 
-
-        self.dtype =  tf.float32
+        self.dtype = tf.float16 if config.use_fp16 else tf.float32
         self.keep_prob_placeholder = tf.placeholder(self.dtype,shape=[],name='keep_prob')
         self.mode_save_path = os.path.join(config.model_dir,config.model_name)
 
         self.beam_with = config.beam_with
-        self.use_beamsearch_decode = True
+        if config.beam_with > 1 and self.mode == "decode":
+            self.use_beamsearch_decode = True
+        else:
+            self.use_beamsearch_decode = False
 
 
     def _init_placeholders(self):
         # encode_inputs:[batch_size,max_time_steps]
         self.encoder_inputs = tf.placeholder(dtype=tf.int32,shape=(None,None),name='encoder_inputs')
+
         #encode_inputs_lengths [batch_size]
         self.encoder_inputs_length = tf.placeholder(dtype=tf.int32,shape=(None,),name='encoder_inputs_length')
-        # 获取batch_size的大小
+
+        # get dynamic batch_size
         self.batch_size = tf.shape(self.encoder_inputs)[0]
-        # decoder_inputs:[batch_size,max_time_steps]
-        self.decoder_inputs = tf.placeholder(dtype=tf.int32,shape=(None,None),name='decoder_inputs')
-        # decoder_inputs_length: [batch_size]
-        self.decoder_inputs_length = tf.placeholder(dtype=tf.int32,shape=(None,),name='decoder_inputs_length')
+        if self.mode == 'train':
+            # decoder_inputs:[batch_size,max_time_steps]
+            self.decoder_inputs = tf.placeholder(dtype=tf.int32,shape=(None,None),name='decoder_inputs')
+            # decoder_inputs_length: [batch_size]
+            self.decoder_inputs_length = tf.placeholder(dtype=tf.int32,shape=(None,),name='decoder_inputs_length')
 
-        decoder_start_token = tf.ones(shape=[self.batch_size,1],dtype=tf.int32) * data_utils.GO_ID
-        decoder_end_token = tf.ones(shape=[self.batch_size,1],dtype=tf.int32) * data_utils.EOS_ID
+            decoder_start_token = tf.ones(shape=[self.batch_size,1],dtype=tf.int32) * data_utils.GO_ID
+            decoder_end_token = tf.ones(shape=[self.batch_size,1],dtype=tf.int32) * data_utils.EOS_ID
 
-        # 在每一句解码的句子前面加一个GO标识，作为训练的时候解码的输入
-        self.decoder_inputs_train = tf.concat([decoder_start_token,self.decoder_inputs], axis=1)
-        # 句子长度加1
-        self.decoder_inputs_length_train = self.decoder_inputs_length + 1
-        # 在每一句解码的句子后面加一个END表示，作为训练时解码段的输出
-        self.decoder_targets_train = tf.concat([self.decoder_inputs,decoder_end_token], axis=1)
+            # decoder_inputs_train: [batch_size , max_time_steps + 1]
+            # insert _GO symbol in front of each decoder input
+            self.decoder_inputs_train = tf.concat([decoder_start_token,
+                                                   self.decoder_inputs], axis=1)
+
+            # decoder_inputs_length_train: [batch_size]
+            self.decoder_inputs_length_train = self.decoder_inputs_length + 1
+
+            # decoder_targets_train: [batch_size, max_time_steps + 1]
+            # insert EOS symbol at the end of each decoder input
+            self.decoder_targets_train = tf.concat([self.decoder_inputs,
+                                                    decoder_end_token], axis=1)
 
 
 
@@ -113,69 +120,52 @@ class Seq2SeqModel(object):
             initializer = tf.random_uniform_initializer(-sqrt3,sqrt3,dtype=tf.float32)
             self.embeddings = tf.get_variable(name='embedding_matrix',shape=[self.num_encoder_symbols,self.embeddint_size],dtype=tf.float32,initializer=initializer)
 
-            self.encoder_inputs_embedded = tf.nn.embedding_lookup(self.embeddings, self.encoder_inputs)
-            # 经过一层浓密型网络
-            input_layer = Dense(self.hidden_units, dtype=self.dtype, name='input_projection')
-            self.encoder_inputs_embedded = input_layer(self.encoder_inputs_embedded)
-
-            # 输入的句子也经过一层浓密型网络
-
-            self.decoder_inputs_embedded = tf.nn.embedding_lookup(self.embeddings, self.decoder_inputs_train)
-            self.decoder_inputs_embedded = input_layer(self.decoder_inputs_embedded)
-
-
-
 
     def _build_network(self):
-        # 编码层网络定义
-        self.encoder_outputs, self.encoder_last_state = build_encode(self.encoder_inputs_embedded,self.encoder_inputs_length,self.depth,self.hidden_units,self.keep_prob_placeholder,self.use_residual)
+        # build encoder networks
+        self.build_encode()
 
-        # 解码层网络定义
-        ## Decoder
-        logits, sample_id, final_context_state = self.build_decode()
+        # build decoder networks
+        self.build_decode()
 
-        if self.mode != tf.contrib.learn.ModeKeys.INFER:
-            loss = self._compute_loss(logits)
-        else:
-            loss = None
-        return  logits,loss,sample_id,final_context_state
+    def build_encode(self):
+        with tf.variable_scope('encoder'):
 
-    def _compute_loss(self, logits):
-        """Compute optimization loss."""
-        target_output = self.decoder_targets_train
-        max_time = tf.shape(target_output)[1]
-        target_weights = tf.sequence_mask(
-            self.decoder_inputs_length_train, max_time, dtype=logits.dtype)
-        #crossent = tf.nn.sparse_softmax_cross_entropy_with_logits(
-        #    labels=target_output, logits=logits)
-        #loss = tf.reduce_sum(
-        #    crossent * target_weights) / tf.to_float(self.batch_size)
 
-        loss = seq2seq.sequence_loss(logits=logits,
-                                     targets=target_output,
-                                     weights=target_weights,
-                                     average_across_timesteps=True,
-                                     average_across_batch=True)
-        return loss
+            # Embedded_inputs: [batch_size, time_step, embedding_size]
+            self.encoder_inputs_embedded = tf.nn.embedding_lookup(self.embeddings,self.encoder_inputs)
 
+            # Input projection layer to feed embedded inputs to the cell
+            input_layer = Dense(self.hidden_units,dtype=self.dtype,name='input_projection')
+
+            # Embedded inputs having gone through input projection layer
+            self.encoder_inputs_embedded = input_layer(self.encoder_inputs_embedded)
+
+
+            self.encoder_outputs,self.encoder_last_state = build_bilstm_encode(self.encoder_inputs_embedded,self.encoder_inputs_length,self.depth,self.hidden_units,self.keep_prob_placeholder,self.use_residual)
 
 
 
     def build_decode(self):
         # build decoder and attention.
         with tf.variable_scope('decoder'):
-            self.decoder_cell,self.decoder_initial_state = build_decoder_cell(self.encoder_outputs,self.encoder_last_state,self.encoder_inputs_length,self.depth,self.hidden_units,self.keep_prob_placeholder,self.use_residual,self.mode,self.beam_with,self.batch_size)
+            #self.build_decode_cell()  #
+            self.decoder_cell,self.decoder_initial_state = build_decoder_cell(self.encoder_outputs,self.encoder_last_state,self.encoder_inputs_length,self.depth,self.hidden_units,self.keep_prob_placeholder,self.use_residual,self.mode,self.beam_with,self.batch_size)#self.build_decode_cell()
+
+            # Input projection layer to feed embedded inputs to the cell
+            # ** Essential when use_residual=True to match input/output dims
+            input_layer = Dense(self.hidden_units*2,dtype=self.dtype,name='input_projection')
+
             # Output projection layer to convert cell_outpus to logits
             output_layer = Dense(self.num_decoder_symbols,name='output_project')
 
-            # Maximum decoder time_steps in current batch
-            decoding_length_factor = 2.0
-            max_encoder_length = tf.reduce_max(self.decoder_inputs_length_train)
-            maximum_iterations = tf.to_int32(tf.round(
-                tf.to_float(max_encoder_length) * decoding_length_factor))
+            if self.mode == 'train':
+                # decoder_inputs_embedded: [batch_size, max_time_step + 1, embedding_size]
+                self.decoder_inputs_embedded = tf.nn.embedding_lookup(self.embeddings,self.decoder_inputs_train)
 
-            # train或者eval的时候处理
-            if self.mode != tf.contrib.learn.ModeKeys.INFER:
+                # Embedded inputs having gone through input projection layer
+                self.decoder_inputs_embedded = input_layer(self.decoder_inputs_embedded)
+
                 # Helper to feed inputs for training: read inputs from dense ground truth vectors
                 training_helper = seq2seq.TrainingHelper(inputs=self.decoder_inputs_embedded,
                                                          sequence_length=self.decoder_inputs_length_train,
@@ -187,25 +177,49 @@ class Seq2SeqModel(object):
                                                         initial_state=self.decoder_initial_state,
                                                         output_layer=output_layer)
 
+
+                #Maximum decoder time_steps in current batch
+                max_decoder_length = tf.reduce_max(self.decoder_inputs_length_train)
+
                 # decoder_outputs_train: BasicDecoderOutput
                 #                        namedtuple(rnn_outputs, sample_id)
                 # decoder_outputs_train.rnn_output: [batch_size, max_time_step + 1, num_decoder_symbols] if output_time_major=False
                 #                                   [max_time_step + 1, batch_size, num_decoder_symbols] if output_time_major=True
                 # decoder_outputs_train.sample_id: [batch_size], tf.int32
-                decoder_outputs_train,final_context_state,_ = seq2seq.dynamic_decode(decoder=training_decoder,output_time_major=False,impute_finished=True,swap_memory=True)
+                (self.decoder_outputs_train,self.decoder_last_state_train,self.decoder_outputs_length_train) = (seq2seq.dynamic_decode(decoder=training_decoder,
+                                                                                                                                        output_time_major=False,
+                                                                                                                                       impute_finished=True,
+                                                                                                                                       maximum_iterations=max_decoder_length))
                 # More efficient to do the projection on the batch-time-concatenated tensor
                 # logits_train: [batch_size, max_time_step + 1, num_decoder_symbols]
                 # self.decoder_logits_train = output_layer(self.decoder_outputs_train.rnn_output)
-                sample_id = decoder_outputs_train.sample_id
-                logits = tf.identity(decoder_outputs_train.rnn_output)
-            else:
+                self.decoder_logits_train = tf.identity(self.decoder_outputs_train.rnn_output)
+
+                # Use argmax to extract decoder symbols to emit
+                self.decoder_pred_train = tf.argmax(self.decoder_logits_train,axis=-1,
+                                                    name='decoder_pre_train')
+
+                # masks: masking for valid and padded time steps, [batch_size, max_time_step + 1]
+                masks = tf.sequence_mask(lengths=self.decoder_inputs_length_train,
+                                         maxlen=max_decoder_length,
+                                         dtype=self.dtype,
+                                         name='masks')
+
+                self.loss = seq2seq.sequence_loss(logits=self.decoder_logits_train,
+                                                  targets=self.decoder_targets_train,
+                                                  weights=masks,
+                                                  average_across_timesteps=True,
+                                                  average_across_batch=True)
+
+                # Training summary for the current batch_loss
+                tf.summary.scalar('loss', self.loss)
+            elif self.mode == 'decode':
                 # Start_tokens: [batch_size,] `int32` vector
                 start_token = tf.ones([self.batch_size,],tf.int32) * data_utils.GO_ID
                 end_token = data_utils.EOS_ID
 
-                # 由于解码的时候，需要经过一层dense网络，所以定义一个函数转化
                 def embed_and_input_proj(inputs):
-                    return self.input_layer_out(tf.nn.embedding_lookup(self.embeddings,inputs))
+                    return input_layer(tf.nn.embedding_lookup(self.embeddings,inputs))
 
                 if not self.use_beamsearch_decode:
                     decoding_helper = seq2seq.GreedyEmbeddingHelper(start_tokens=start_token,end_token=end_token,
@@ -219,7 +233,7 @@ class Seq2SeqModel(object):
                         cell=self.decoder_cell,
                         embedding=embed_and_input_proj,
                         start_tokens=start_token,
-                        end_token=end_token,
+                        end_token=data_utils.EOS_ID,
                         initial_state=self.decoder_initial_state,
                         beam_width=self.beam_with,
                         output_layer=output_layer
@@ -241,10 +255,9 @@ class Seq2SeqModel(object):
                     # decoder_outputs_decode.beam_search_decoder_output: BeamSearchDecoderOutput instance
                     #                                                    namedtuple(scores, predicted_ids, parent_ids)
 
-                decoder_outputs_decode,final_context_state,_ = seq2seq.dynamic_decode(
-                    decoder=inference_decoder,
-                    output_time_major=False,
-                    maximum_iterations=maximum_iterations)
+                (self.decoder_outputs_decode,self.decoder_last_state_decode,self.decoder_outputs_length_decode) = (seq2seq.dynamic_decode(decoder=inference_decoder,
+                                        output_time_major=False,
+                                        maximum_iterations=self.config.max_decode_step))
 
                 if not self.use_beamsearch_decode:
                     # decoder_outputs_decode.sample_id: [batch_size, max_time_step]
@@ -254,16 +267,11 @@ class Seq2SeqModel(object):
 
                     # Here, we use expand_dims to be compatible with the result of the beamsearch decoder
                     # decoder_pred_decode: [batch_size, max_time_step, 1] (output_major=False)
-                    #self.decoder_pred_decode = tf.expand_dims(self.decoder_outputs_decode.sample_id, -1)
-                    logits = decoder_outputs_decode.rnn_output
-                    sample_id = decoder_outputs_decode.sample_id
+                    self.decoder_pred_decode = tf.expand_dims(self.decoder_outputs_decode.sample_id, -1)
                 else:
                     # Use beam search to approximately find the most likely translation
                     # decoder_pred_decode: [batch_size, max_time_step, beam_width] (output_major=False)
-                    sample_id = decoder_outputs_decode.predicted_ids
-                    logits = tf.no_op()
-            return  logits,sample_id,final_context_state
-
+                    self.decoder_pred_decode = self.decoder_outputs_decode.predicted_ids
 
 
 
@@ -272,17 +280,14 @@ class Seq2SeqModel(object):
             train_params = tf.trainable_variables()
             self.opt = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
 
-            if self.mode == tf.contrib.learn.ModeKeys.TRAIN:
-                # Compute gradients of loss w.r.t. all trainable variables
-                gradients = tf.gradients(self.loss,train_params)
+            # Compute gradients of loss w.r.t. all trainable variables
+            gradients = tf.gradients(self.loss,train_params)
 
-                # Clip_gradients by a given maximum_gradient_norm
-                clip_gradients,_ = tf.clip_by_global_norm(gradients,self.max_gradient_norm)
+            # Clip_gradients by a given maximum_gradient_norm
+            clip_gradients,_ = tf.clip_by_global_norm(gradients,self.max_gradient_norm)
 
-                # Update the model
-                self.updates = self.opt.apply_gradients(zip(clip_gradients,train_params),global_step=self.global_step)
-
-
+            # Update the model
+            self.updates = self.opt.apply_gradients(zip(clip_gradients,train_params),global_step=self.global_step)
 
 
     #创建 feed_dict
@@ -351,11 +356,11 @@ class Seq2SeqModel(object):
 
         input_feed = self.make_feeds_dict(encoder_inputs,encoder_inputs_length,
                                           decoder_inputs,decoder_inputs_length,False)
-        input_feed[self.keep_prob_placeholder.name] = self.keep_prob
+        input_feed[self.keep_prob_placeholder.name] = 1 - self.config.dropout_rate
 
         output_feed = [self.updates,self.loss,self.summary_op]
-        _,loss,summary = sess.run(output_feed,input_feed)
-        return loss,summary
+        _,loss,summary_op = sess.run(output_feed,input_feed)
+        return loss,summary_op
 
     # 训练时，验证模型效果
     def eval(self, sess, encoder_inputs, encoder_inputs_length,
@@ -390,11 +395,12 @@ class Seq2SeqModel(object):
         input_feed = self.make_feeds_dict(encoder_inputs,encoder_inputs_length,
                                           None,None,True)
         input_feed[self.keep_prob_placeholder.name] = 1.0
-        output_feed = self.sample_id
+        output_feed = [self.decoder_pred_decode,self.encoder_outputs ]
         for key in input_feed.keys():
             print(key)
-        print(self.sample_id.name)
+        print(self.decoder_pred_decode.name)
         predicts = sess.run(output_feed,input_feed)
+
 
         outputs = []
         # This is a greedy decoder - outputs are just argmaxes of output_logits.
@@ -417,12 +423,12 @@ class Seq2SeqModel(object):
                                           None, None, True)
         input_feed[self.keep_prob_placeholder.name] = 1.0
 
-        output_feed = self.sample_id
+        output_feed = self.decoder_pred_decode
         predicts = sess.run(output_feed, input_feed)
 
         outputs = []
         # This is a greedy decoder - outputs are just argmaxes of output_logits.
-        print(predicts.shape)
+        print(self.decoder_pred_decode)
         result = []
         print(predicts[0])
         for k in range(self.beam_with):
@@ -450,8 +456,9 @@ class Seq2SeqModel(object):
             print("init model")
             sess.run(tf.global_variables_initializer())
 
-
+tmp = None
+index=1
 if __name__ == '__main__':
     from seq2seq.seq2seq_dynamic import config
-    Seq2SeqModel(config,tf.contrib.learn.ModeKeys.TRAIN)
+    Seq2SeqModel(config,'train')
 
