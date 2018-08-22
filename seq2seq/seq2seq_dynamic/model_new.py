@@ -64,7 +64,7 @@ class Seq2SeqModel(object):
         self.global_epoch_step = tf.Variable(0,trainable=False,name='global_epoch_step')
         self.global_epoch_step_op = tf.assign(self.global_epoch_step,self.global_epoch_step + 1)
 
-        lr = tf.train.exponential_decay(0.1, global_step=self.global_step,
+        lr = tf.train.exponential_decay(0.001, global_step=self.global_step,
                                         decay_steps= 500, decay_rate=0.8,
                                         staircase=True)
         self.learning_rate= tf.maximum(lr, 0.0001)
@@ -395,7 +395,7 @@ class Seq2SeqModel(object):
         input_feed = self.make_feeds_dict(encoder_inputs,encoder_inputs_length,
                                           None,None,True)
         input_feed[self.keep_prob_placeholder.name] = 1.0
-        output_feed = [self.decoder_pred_decode,self.encoder_outputs ]
+        output_feed = self.decoder_pred_decode
         for key in input_feed.keys():
             print(key)
         print(self.decoder_pred_decode.name)
@@ -404,7 +404,6 @@ class Seq2SeqModel(object):
 
         outputs = []
         # This is a greedy decoder - outputs are just argmaxes of output_logits.
-        print(predicts.shape)
         for token in predicts[0]:
             selected_token_id = int(token)
             if selected_token_id == data_utils.EOS_ID or selected_token_id == data_utils.PAD_ID:

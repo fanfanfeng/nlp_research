@@ -54,14 +54,14 @@ use_type = 0 # 0 normal network
              # 2 highway_network
              # 3 dense network
 total_layers = 5
-units_between_stride = total_layers /5
+units_between_stride = int(total_layers /5)
 
 tf.reset_default_graph()
 input_layer = tf.placeholder(shape=[None,32,32,3],dtype=tf.float32,name='input')
 label_layer = tf.placeholder(shape=[None],dtype=tf.int32)
 label_oh = slim.layers.one_hot_encoding(label_layer,10)
 
-layer1 = slim.conv2d(inputs=input_layer,64,[3,3],normalizer_fn=slim.batch_norm,scope='conv_'+ str(0))
+layer1 = slim.conv2d(input_layer,64,[3,3],normalizer_fn=slim.batch_norm,scope='conv_'+ str(0))
 for i in range(5):
     for j in range(units_between_stride):
         if use_type == 1:

@@ -22,8 +22,9 @@ def train():
         graph_writer = tf.summary.FileWriter(config.model_dir,graph=sess.graph)
         currentMode = "train"
         if currentMode == 'decode':
-            model_obj = model.Seq2SeqModel(config, 'decode')
+            model_obj = model_new.Seq2SeqModel(config, 'decode')
             model_obj.model_restore(sess)
+
 
             outputTensors = []
             # ops = sess.graph.get_operations()
@@ -32,7 +33,7 @@ def train():
             # a = sess.graph.get_operation_by_name("GatherTree").outputs[0]
             # print(model_obj.decoder_pred_decode.name.replace(":0",""))
             outputTensors.append(model_obj.decoder_pred_decode.name.replace(":0", ""))
-            # outputTensors.append("decoder/decoder/GatherTree")
+
             print(outputTensors)
 
             output_graph_with_weight = tf.graph_util.convert_variables_to_constants(sess, sess.graph_def, outputTensors)
@@ -81,7 +82,7 @@ def train():
                             graph_writer.add_summary(summary, model_obj.global_step.eval())
 
                         #验证模型
-                        if (model_obj.global_step.eval() +1) % config.valid_freq == 0:
+                        if (model_obj.global_step.eval() +1) % config.valid_freq ==0 :
                             print("验证模型。。。。。")
                             valid_loss = 0.0
                             totoal_sentent = 0
@@ -97,7 +98,7 @@ def train():
                             print("验证集上面的loss值为 %.2f, Preplexity值为 %.2f" %(valid_loss,math.exp(valid_loss)))
 
 
-                        if (model_obj.global_step.eval()+1) % config.save_freq == 0:
+                        if (model_obj.global_step.eval()+1) % config.save_freq :
                             print("保存模型。。。。。。。")
                             checkpoint_path = model_obj.mode_save_path
                             model_obj.saver.save(sess,checkpoint_path,global_step=model_obj.global_step)
