@@ -36,10 +36,10 @@ class Meta_Load():
         self.logit_tensor = self.sess.graph.get_operation_by_name("softmax_layer/logits").outputs[0]
 
     def predict(self,text):
-        words = list(jieba.cut(text))
-        words = " ".join(words)
-        print(words)
-        tokens = [int(self.word2id_dict[token]) for token in words.split(" ") if token != "" and token in self.word2id_dict]
+        #words = list(jieba.cut(text))
+        #words = " ".join(words)
+        #print(words)
+        tokens = [int(self.word2id_dict[token]) for token in text.split(" ") if token != "" and token in self.word2id_dict]
         print(tokens)
         if len(tokens) < classfy_setting.max_document_length:
             tokens = tokens + [0] * (classfy_setting.max_document_length - len(tokens))

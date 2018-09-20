@@ -31,7 +31,10 @@ attention_size = 200
 
 #标签列表
 
-label_list = ['CHAT',"CROSSTALK","STORYTELL","ESSAY","weather",'traintickets','live_channel_epg','radio','mv'] #['JOKE', 'CHAT', 'STOCK', 'TVINSTRUCTION', 'BAIKE', 'SETTING', 'PLAYER', 'VIDEO', 'MUSIC', 'APP', 'INSTRUCTION','WEATHER',"STORYTELL","CROSSTALK","ESSAY"]
+classify_tag_dict = {'chat': 0, 'crosstalk': 1, 'storytelling': 2, 'essay': 3, 'weather': 4, 'train_tickets': 5,
+                     'video': 6, 'radio': 7, 'baike':8, 'tv':9, 'instruction': 10}
+
+label_list = ['CHAT',"CROSSTALK","STORYTELL","ESSAY","weather",'traintickets','video','radio','baike','tv','instruction'] #['JOKE', 'CHAT', 'STOCK', 'TVINSTRUCTION', 'BAIKE', 'SETTING', 'PLAYER', 'VIDEO', 'MUSIC', 'APP', '      ','WEATHER',"STORYTELL","CROSSTALK","ESSAY"]
 index2label = {i:l.strip() for i,l in enumerate(label_list)}
 
 #模型参数
