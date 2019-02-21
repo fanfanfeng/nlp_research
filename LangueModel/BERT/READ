@@ -1,0 +1,5 @@
+如果是英文训练，请参考官网的训练步骤
+
+这里是中文训练
+1.先运行make_sample_text_from_people_2014.py ，语料是人民日报2014年的语料，输出sample_text.txt
+2.
