@@ -4,4 +4,14 @@
 ## BERT-BiLSTM-CRF-NER
    利用谷歌bert模型训练ner,融合bert_as_service作为一个服务
    参考github:https://github.com/macanv/BERT-BiLSTM-CRF-NER
- 
+
+
+
+
+##LangueModel 语言模型
+    -- Word2vec skip
+    -- ELMO
+       blog:    https://blog.csdn.net/sinat_26917383/article/details/81913790
+                https://blog.csdn.net/jeryjeryjery/article/details/81183433
+       参考 github:  https://github.com/Rokid/ELMo-chinese
+    -- BERT 参考github:https://github.com/google-research/bert

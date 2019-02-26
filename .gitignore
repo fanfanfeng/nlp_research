@@ -8,3 +8,9 @@ graph/
 *-abk*
 __pycache__
 *-bak
+checkpoint/
+logs/
+*.png
+model_uncase/
+result_classify/
+output/
