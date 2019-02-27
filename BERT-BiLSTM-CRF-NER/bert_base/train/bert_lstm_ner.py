@@ -388,7 +388,7 @@ def adam_filter(model_path):
 
 def train(args):
     os.environ['CUDA_VISIBLE_DEVICES'] = args.device_map
-
+    tf.logging.set_verbosity(tf.logging.INFO)
     processors = {
         'ner': NerProcessor
     }
@@ -614,7 +614,7 @@ def train(args):
         print("".join(eval_result))
         # 写结果到文件中
         with codecs.open(os.path.join(args.output_dir,'predict_score.txt'),'a',encoding='utf-8') as fd:
-            fd.writer("".join(eval_result))
+            fd.write("".join(eval_result))
 
 
     # filter model
