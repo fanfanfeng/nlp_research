@@ -150,6 +150,7 @@ class BLSTM_CRF(object):
                 log_likelihood,trans = crf.crf_log_likelihood(
                     inputs = logits,
                     tag_indices=self.labels,
+                    transition_params=trans,
                     sequence_lengths=self.lengths,
                 )
 
