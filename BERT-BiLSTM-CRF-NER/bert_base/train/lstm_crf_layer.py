@@ -139,12 +139,19 @@ class BLSTM_CRF(object):
                 :return: scalar loss
                 """
         with tf.variable_scope('crf_loss'):
+            trans = tf.get_variable(
+                "transitions",
+                shape=[self.num_labels, self.num_labels],
+                initializer=self.initializers.xavier_initializer())
 
-            log_likelihood,trans = crf.crf_log_likelihood(
-                inputs = logits,
-                tag_indices=self.labels,
-                sequence_lengths=self.lengths,
-            )
+            if self.labels is None:
+                return None,trans
+            else:
+                log_likelihood,trans = crf.crf_log_likelihood(
+                    inputs = logits,
+                    tag_indices=self.labels,
+                    sequence_lengths=self.lengths,
+                )
 
-        return tf.reduce_mean(-log_likelihood),trans
+                return tf.reduce_mean(-log_likelihood),trans
 
