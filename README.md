@@ -15,3 +15,10 @@
                 https://blog.csdn.net/jeryjeryjery/article/details/81183433
        参考 github:  https://github.com/Rokid/ELMo-chinese
     -- BERT 参考github:https://github.com/google-research/bert
+
+
+
+##utils 工具类以及一些小工具实现
+    -- filter.py
+        敏感词过滤的几种实现+某1w词敏感词库，参考github:https://github.com/observerss/textfilter
+
