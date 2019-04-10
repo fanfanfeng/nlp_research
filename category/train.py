@@ -4,8 +4,9 @@ sys.path.append(r"/data/python_project/nlp_research")
 import tensorflow as tf
 from utils.tfrecord_api import _int64_feature
 from category.data_utils import pad_sentence,create_vocab_dict,load_vocab_and_intent,load_rasa_data
-from category.tf_models.classify_cnn_model import CNNConfig
+from category.tf_models.classify_cnn_model import CNNConfig,ClassifyCnnModel
 import os
+import tqdm
 
 output_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),"output")
 if not os.path.exists(output_path):
@@ -32,7 +33,7 @@ def make_tfrecord_files(file_or_folder,classify_config):
         for file in os.listdir(file_or_folder):
             files.append(os.path.join(file_or_folder, file))
 
-    for file in files:
+    for file in tqdm.tqdm(files):
         sentences,intentions = load_rasa_data(file)
         for sentence,intent in zip(sentences,intentions):
             sentence_ids = pad_sentence(sentence,classify_config.max_sentence_length,vocab)
@@ -44,11 +45,71 @@ def make_tfrecord_files(file_or_folder,classify_config):
             tfrecord_writer.write(train_feature_item.SerializeToString())
     tfrecord_writer.close()
 
+def input_fn(classify_config, shuffle_num, mode,epochs):
+    """
+     build tf.data set for input pipeline
+
+    :param classify_config: classify config dict
+    :param shuffle_num: type int number , random select the data
+    :param mode: type string ,tf.estimator.ModeKeys.TRAIN or tf.estimator.ModeKeys.PREDICT
+    :return: set() with type of (tf.data , and labels)
+    """
+    def parse_single_tfrecord(serializer_item):
+        features = {
+            'label': tf.FixedLenFeature([],tf.int64),
+            'sentence' : tf.FixedLenFeature([classify_config.max_sentence_length],tf.int64)
+        }
+
+        features_var = tf.parse_single_example(serializer_item,features)
+
+        labels = tf.cast(features_var['label'],tf.int64)
+        #sentence = tf.decode_raw(features_var['sentence'],tf.uint8)
+        sentence = tf.cast(features_var['sentence'],tf.int64)
+        return sentence,labels
+
+
+
+    tf_record_filename = os.path.join(classify_config.save_path,'train.tfrecord')
+    if not os.path.exists(tf_record_filename):
+        raise FileNotFoundError("tfrecord not found")
+    tf_record_reader = tf.data.TFRecordDataset(tf_record_filename)
+
+
+    if mode == tf.estimator.ModeKeys.TRAIN:
+        dataset = tf_record_reader.map(parse_single_tfrecord).shuffle(shuffle_num).batch(classify_config.batch_size).repeat(epochs)
+    else:
+        dataset = tf_record_reader.map(parse_single_tfrecord).batch(classify_config.batch_size)
+    iterator = dataset.make_one_shot_iterator()
+    data, labels = iterator.get_next()
+    data = tf.reshape(data,[-1,classify_config.max_sentence_length])
+    return data, labels
+
+def train():
+    classify_config = CNNConfig()
+    classify_config.save_path = output_path
+    if not os.path.exists(classify_config.save_path):
+        os.makedirs(classify_config.save_path)
+
+    vocab,vocab_list,intent = load_vocab_and_intent(output_path)
+
+
+    classify_config.vocab_size = len(vocab_list)
+
+    os.environ["CUDA_VISIBLE_DEVICES"] = classify_config.CUDA_VISIBLE_DEVICES
+    with tf.Graph().as_default():
+        training_input_x,training_input_y = input_fn(classify_config,
+                                                          shuffle_num=500000,
+                                                          mode=tf.estimator.ModeKeys.TRAIN,
+                                                          epochs=classify_config.epochs)
+
+        classify_model = ClassifyCnnModel(classify_config)
+        classify_model.train(training_input_x,training_input_y)
 
 if __name__ == '__main__':
     classify_config = CNNConfig()
     classify_config.save_path = output_path
-    if 'win' in sys.platform:
-        make_tfrecord_files(r'E:\nlp-data\rasa_corpose',classify_config)
-    else:
-        make_tfrecord_files(r'/data/output_all/train', classify_config)
+    #if 'win' in sys.platform:
+    #    make_tfrecord_files(r'E:\nlp-data\rasa_corpose',classify_config)
+    #else:
+    #    make_tfrecord_files(r'/data/output_all/train', classify_config)
+    train()

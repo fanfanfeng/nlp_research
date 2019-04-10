@@ -99,14 +99,13 @@ class BaseClassifyModel(object):
             saver = tf.train.Saver(tf.global_variables(), max_to_keep=5)
 
             sess.run(tf.global_variables_initializer())
-            pbar = tqdm.tqdm(range(self.classify_config.epochs), desc="Epochs")
             train_acc = 0
             last_loss = 0
             steps = 0
 
             tf_save_path = os.path.join(self.classify_config.save_path,'tf')
             try:
-                while True:
+                for _ in tqdm.tqdm(range(40000), desc="steps",miniters=10):
                     sess_loss,acc,steps,_ = sess.run(
                         [loss,  accuracy,globalStep,trainOp],
                         feed_dict={dropout:0.8}

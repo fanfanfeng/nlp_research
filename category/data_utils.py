@@ -4,6 +4,7 @@ import jieba
 import json
 import os
 import sys
+import tqdm
 
 _START_VOCAB = ['_PAD', '_GO', "_EOS", '<UNK>']
 if 'win' in sys.platform:
@@ -36,7 +37,7 @@ def create_vocab_dict(file_or_folder,min_freq=3,output_path=None):
 
     vocab = {}
     intent = []
-    for file in files:
+    for file in tqdm.tqdm(files):
         sentences,intentions = load_rasa_data(file)
         for sentence in sentences:
             real_tokens = jieba.cut(sentence)
