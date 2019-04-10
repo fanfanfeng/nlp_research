@@ -1,8 +1,10 @@
 # create by fanfan on 2019/4/10 0010
+import sys
+sys.path.append(r"/data/python_project/nlp_research")
 import tensorflow as tf
 from utils.tfrecord_api import _int64_feature
 from category.data_utils import pad_sentence,create_vocab_dict,load_vocab_and_intent,load_rasa_data
-from category.models.classify_cnn_model import ClassifyCnnModel,CNNConfig
+from category.tf_models.classify_cnn_model import CNNConfig
 import os
 
 output_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),"output")
@@ -46,4 +48,7 @@ def make_tfrecord_files(file_or_folder,classify_config):
 if __name__ == '__main__':
     classify_config = CNNConfig()
     classify_config.save_path = output_path
-    make_tfrecord_files(r'E:\nlp-data\rasa_corpose',classify_config)
+    if 'win' in sys.platform:
+        make_tfrecord_files(r'E:\nlp-data\rasa_corpose',classify_config)
+    else:
+        make_tfrecord_files(r'/data/output_all/train', classify_config)

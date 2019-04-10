@@ -1,5 +1,5 @@
 # create by fanfan on 2019/3/26 0026
-from category.models.base_classify_model import BaseClassifyModel,ClassifyConfig
+from category.tf_models.base_classify_model import BaseClassifyModel,ClassifyConfig
 import tensorflow as tf
 from tensorflow.contrib import layers
 import os

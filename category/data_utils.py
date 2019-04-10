@@ -3,9 +3,13 @@
 import jieba
 import json
 import os
+import sys
 
 _START_VOCAB = ['_PAD', '_GO', "_EOS", '<UNK>']
-user_dict_path = r'E:\nlp-data\jieba_dict\dict_modify.txt'
+if 'win' in sys.platform:
+    user_dict_path = r'E:\nlp-data\jieba_dict\dict_modify.txt'
+else:
+    user_dict_path = r'/data/python_project/rasa_corpus/jieba_dict/dict_modify.txt'
 
 jieba.load_userdict(user_dict_path)
 
