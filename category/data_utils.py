@@ -26,6 +26,8 @@ def load_rasa_data(file_name):
     return sentents,intentions
 
 
+
+
 def create_vocab_dict(file_or_folder,min_freq=3,output_path=None):
     files = []
     if os.path.isfile(file_or_folder):
@@ -58,7 +60,7 @@ def create_vocab_dict(file_or_folder,min_freq=3,output_path=None):
             for word in vocab_list:
                 fwrite.write(word + "\n")
 
-        with open(os.path.join(output_path,'intent.txt'),'w',encoding='utf-8') as fwrite:
+        with open(os.path.join(output_path,'label.txt'),'w',encoding='utf-8') as fwrite:
             for itent in intent:
                 fwrite.write(itent + "\n")
 
@@ -73,7 +75,7 @@ def load_vocab_and_intent(output_path):
         for word in fread:
             vocab_list.append(word.strip())
 
-    with open(os.path.join(output_path, 'intent.txt'), 'r', encoding='utf-8') as fread:
+    with open(os.path.join(output_path, 'label.txt'), 'r', encoding='utf-8') as fread:
         for itent in fread:
             intent.append(itent.strip())
 

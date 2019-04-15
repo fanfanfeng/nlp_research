@@ -2,6 +2,7 @@
 import tensorflow as tf
 import tqdm
 import os
+from sklearn.metrics import classification_report,f1_score
 
 input_node_name = 'input_x'
 output_node_name = 'predict_index'
@@ -99,19 +100,20 @@ class BaseClassifyModel(object):
             saver = tf.train.Saver(tf.global_variables(), max_to_keep=5)
 
             sess.run(tf.global_variables_initializer())
-            train_acc = 0
-            last_loss = 0
             steps = 0
 
             tf_save_path = os.path.join(self.classify_config.save_path,'tf')
             try:
                 for _ in tqdm.tqdm(range(40000), desc="steps",miniters=10):
-                    sess_loss,acc,steps,_ = sess.run(
-                        [loss,  accuracy,globalStep,trainOp],
+                    sess_loss,predict_var,steps,_,train_y_var = sess.run(
+                        [loss,  predict,globalStep,trainOp,inputY],
                         feed_dict={dropout:0.8}
                     )
+
                     if steps % self.classify_config.evaluate_every_num_epochs == 0:
-                        print("current step:%s ,loss:%s , acc :%s" % (steps,sess_loss,acc))
+                        f1 = f1_score(train_y_var,predict_var,average='micro')
+                        print("current step:%s ,loss:%s , f1 :%s" % (steps,sess_loss,f1))
+
 
                     if (steps+1) % self.classify_config.save_every_num_epochs == 0:
                         saver.save(sess,tf_save_path,steps)

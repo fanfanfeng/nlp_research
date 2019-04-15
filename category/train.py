@@ -7,42 +7,46 @@ from category.data_utils import pad_sentence,create_vocab_dict,load_vocab_and_in
 from category.tf_models.classify_cnn_model import CNNConfig,ClassifyCnnModel
 import os
 import tqdm
-
-output_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),"output")
-if not os.path.exists(output_path):
-    os.mkdir(output_path)
+import argparse
+from category import  data_process
 
 
 
-def make_tfrecord_files(file_or_folder,classify_config):
 
-    if os.path.exists(os.path.join(output_path,'vocab.txt')):
-        vocab,vocab_list,intent = load_vocab_and_intent(output_path)
+def argument_parser():
+    parser = argparse.ArgumentParser(description="训练参数")
+    parser.add_argument('--output_path',type=str,default='output/',help="中间文件生成目录")
+    parser.add_argument('--origin_data', type=str, default=None, help="原始数据地址")
+    parser.add_argument('--data_type', type=str, default="default", help="原始数据格式，，目前支持默认的，还有rasa格式")
+
+    return parser.parse_args()
+
+
+
+def make_tfrecord_files(arguments,classify_config):
+    if arguments.data_type == 'default':
+        data_processer = data_process.NormalData(arguments.origin_data,output_path=arguments.output_path)
     else:
-        vocab,vocab_list,intent = create_vocab_dict(file_or_folder,output_path=output_path)
+        data_processer = data_process.RasaData(arguments.origin_data, output_path=arguments.output_path)
+    if os.path.exists(os.path.join(arguments.output_path,'vocab.txt')):
+        vocab,vocab_list,intent = data_processer.load_vocab_and_intent()
+    else:
+        vocab,vocab_list,intent = data_processer.create_vocab_dict()
 
     intent_ids = {key:index for index,key in enumerate(intent)}
     # tfrecore 文件写入
     tfrecord_save_path = os.path.join(classify_config.save_path,"train.tfrecord")
     tfrecord_writer = tf.python_io.TFRecordWriter(tfrecord_save_path)
 
-    files = []
-    if os.path.isfile(file_or_folder):
-        files.append(file_or_folder)
-    else:
-        for file in os.listdir(file_or_folder):
-            files.append(os.path.join(file_or_folder, file))
 
-    for file in tqdm.tqdm(files):
-        sentences,intentions = load_rasa_data(file)
-        for sentence,intent in zip(sentences,intentions):
-            sentence_ids = pad_sentence(sentence,classify_config.max_sentence_length,vocab)
-            #sentence_ids_string = np.array(sentence_ids).tostring()
-            train_feature_item = tf.train.Example(features=tf.train.Features(feature={
-                'label': _int64_feature(intent_ids[intent]),
-                'sentence':_int64_feature(sentence_ids,need_list=False)
-            }))
-            tfrecord_writer.write(train_feature_item.SerializeToString())
+    for sentence,intent in data_processer.load_data():
+        sentence_ids = pad_sentence(sentence,classify_config.max_sentence_length,vocab)
+        #sentence_ids_string = np.array(sentence_ids).tostring()
+        train_feature_item = tf.train.Example(features=tf.train.Features(feature={
+            'label': _int64_feature(intent_ids[intent]),
+            'sentence':_int64_feature(sentence_ids,need_list=False)
+        }))
+        tfrecord_writer.write(train_feature_item.SerializeToString())
     tfrecord_writer.close()
 
 def input_fn(classify_config, shuffle_num, mode,epochs):
@@ -105,11 +109,19 @@ def train():
         classify_model = ClassifyCnnModel(classify_config)
         classify_model.train(training_input_x,training_input_y)
 
+        classify_model.make_pb_file(classify_config.save_path)
+
 if __name__ == '__main__':
+
+    argument_dict = argument_parser()
+
     classify_config = CNNConfig()
+
+    output_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), argument_dict.output_path)
+    if not os.path.exists(output_path):
+        os.mkdir(output_path)
+
     classify_config.save_path = output_path
-    #if 'win' in sys.platform:
-    #    make_tfrecord_files(r'E:\nlp-data\rasa_corpose',classify_config)
-    #else:
-    #    make_tfrecord_files(r'/data/output_all/train', classify_config)
+    argument_dict.output_path = output_path
+    make_tfrecord_files(argument_dict, classify_config)
     train()
