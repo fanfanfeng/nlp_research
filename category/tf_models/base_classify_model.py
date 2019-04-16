@@ -65,7 +65,8 @@ class BaseClassifyModel(object):
 
         with tf.variable_scope('classify_layer'):
             output_layer = self.classify_layer(input_embeddings,dropout)
-        logits = tf.nn.softmax(output_layer,name=output_node_logit)
+        #logits = tf.nn.softmax(output_layer,name=output_node_logit)
+        logits = tf.identity(output_layer, name=output_node_logit)
         return logits
 
     def train(self,inputX,inputY):
