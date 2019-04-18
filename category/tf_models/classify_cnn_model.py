@@ -15,7 +15,7 @@ class CNNConfig(ClassifyConfig):
                num_hidden_layers=2,
                dropout_prob=0.2,
                initializer_range=0.02,
-                learning_rate=0.01,
+                learning_rate=0.001,
                  max_sentence_length=50
                  ):
 

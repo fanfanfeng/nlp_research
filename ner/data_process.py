@@ -4,15 +4,6 @@ import json
 import tqdm
 import jieba
 import random
-import sys
-
-
-if 'win' in sys.platform:
-    user_dict_path = r'E:\nlp-data\jieba_dict\dict_modify.txt'
-else:
-    user_dict_path = r'/data/python_project/rasa_corpus/jieba_dict/dict_modify.txt'
-
-jieba.load_userdict(user_dict_path)
 
 class NormalData():
     def __init__(self,folder,min_freq=3,output_path=None):
@@ -108,13 +99,13 @@ class RasaData():
             with open(file, 'r', encoding='utf-8') as fr:
                 data = json.load(fr)
                 for item in data['rasa_nlu_data']['common_examples']:
-                    yield list(jieba.cut(item['text'])), item['intent']
+                    yield item['text'], item['intent']
 
     def create_vocab_dict(self):
         vocab = {}
         intent_list = set()
         for line, intent in self.load_data():
-            for word in line:
+            for word in line.split(' '):
                 if word in vocab:
                     vocab[word] += 1
                 else:
@@ -166,8 +157,12 @@ class RasaData():
         with open(file, 'r', encoding='utf-8') as fr:
             data = json.load(fr)
             for item in data['rasa_nlu_data']['common_examples']:
-                yield list(jieba.cut(item['text'])), item['intent']
+                yield item['text'], item['intent']
 
 if __name__ == '__main__':
-    normal_data = RasaData(r'E:\nlp-data\rasa_corpose',output_path=r'E:\git-project\nlp_research\category\output')
-    normal_data.create_vocab_dict()
+    normal_data = NormalData(r'E:\qiufengfeng_ubuntu_beifen\category\segment_twotype')
+    for line,inten in normal_data.load_data():
+        print(line)
+        print(inten)
+
+        break
