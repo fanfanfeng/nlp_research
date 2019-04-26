@@ -195,3 +195,32 @@ class BasicNerModel():
                             best_f1 = f1_val
             except tf.errors.OutOfRangeError:
                 print("training end")
+
+    def make_pb_file(self,model_dir):
+        graph = tf.Graph()
+        with graph.as_default():
+            session_conf = tf.ConfigProto(allow_soft_placement=True, log_device_placement=False)
+            session_conf.gpu_options.allow_growth = True
+            session_conf.gpu_options.per_process_gpu_memory_fraction = 0.9
+
+            sess = tf.Session(config=session_conf)
+            with sess.as_default():
+                input_x = tf.placeholder(dtype=tf.int32,shape=(None,self.max_seq_length),name=constant.INPUT_NODE_NAME)
+                dropout = tf.placeholder_with_default(1.0,shape=(), name='dropout')
+                logits = self.create_model(input_x, dropout)
+                pred_ids, _ = crf.crf_decode(potentials=logits, transition_params=self.trans,
+                                             sequence_length=self.real_sentence_length)
+                pred_ids = tf.identity(pred_ids, name=constant.OUTPUT_NODE_NAME)
+
+                saver = tf.train.Saver(tf.global_variables(), max_to_keep=5)
+                checkpoint = tf.train.latest_checkpoint(model_dir)
+                if checkpoint:
+                    saver.restore(sess,checkpoint)
+                else:
+                    raise FileNotFoundError("模型文件未找到")
+
+                output_graph_with_weight = tf.graph_util.convert_variables_to_constants(sess,sess.graph_def,[constant.OUTPUT_NODE_NAME])
+
+                with tf.gfile.GFile(os.path.join(model_dir,'ner.pb'),'wb') as gf:
+                    gf.write(output_graph_with_weight.SerializeToString())
+        return os.path.join(model_dir,'ner.pb')

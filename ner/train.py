@@ -66,7 +66,7 @@ def train(arguments):
             classify_model = BiLSTM(ner_config)
         classify_model.train(training_input_x,training_input_y)
 
-        #classify_model.make_pb_file(classify_config.save_path)
+        classify_model.make_pb_file(ner_config.output_path)
 
 def bert_train(args):
     os.environ['CUDA_VISIBLE_DEVICES'] = args.device_map
@@ -106,8 +106,10 @@ def bert_train(args):
             ner_config.bilstm_layer_nums = 2
         ner_config.ner_type = args.ner_type
         ner_config.embedding_size = bert_config.hidden_size
+        ner_config.bert_model_path = args.bert_model_path
         model = BertNerModel(ner_config,bert_config)
         model.train(bert_input['input_ids'],bert_input['input_mask'],bert_input['segment_ids'],bert_input['label_ids'])
+        model.make_pb_file(ner_config.output_path)
 
 
 if __name__ == '__main__':
