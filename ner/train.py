@@ -1,15 +1,19 @@
 # create by fanfan on 2019/4/10 0010
 import sys
 sys.path.append(r"/data/python_project/nlp_research")
-import tensorflow as tf
-from utils.tfrecord_api import _int64_feature
-from category.data_utils import pad_sentence
-from category.tf_models.classify_cnn_model import CNNConfig,ClassifyCnnModel
 import os
-import tqdm
+
 import argparse
-from category import  data_process
-import threadpool,threading
+from ner import data_process
+from ner.tf_models.base_ner_model import NerConfig
+from ner.tf_models.bilstm import BiLSTM
+from ner.tf_models.idcnn import IdCnn
+from ner.tf_models.bert_ner_model import BertNerModel
+import tensorflow as tf
+from ner.data_utils import input_fn,make_tfrecord_files
+from ner.bert_data_utils import input_fn as bert_input_fn
+from ner.bert_data_utils import make_tfrecord_files as bert_make_tfrecord_files
+from third_models.bert import modeling as bert_modeling
 
 
 
@@ -18,134 +22,107 @@ def argument_parser():
     parser.add_argument('--output_path',type=str,default='output/',help="中间文件生成目录")
     parser.add_argument('--origin_data', type=str, default=None, help="原始数据地址")
     parser.add_argument('--data_type', type=str, default="default", help="原始数据格式，，目前支持默认的，还有rasa格式")
+    parser.add_argument('--ner_type', type=str, default="bilstm", help="神经网络类型：idcnn or bilstm" )
 
+    parser.add_argument('--device_map', type=str, default="0", help="gpu 的设备id")
+    parser.add_argument('--use_bert',action='store_true',help='是否使用bert')
+    parser.add_argument('--bert_model_path',type=str,help='bert模型目录')
+
+    parser.add_argument('--max_sentence_len', type=int,default=50, help='一句话的最大长度')
     return parser.parse_args()
 
-
-
-
-def make_tfrecord_files(arguments,classify_config):
-    if arguments.data_type == 'default':
-        data_processer = data_process.NormalData(arguments.origin_data,output_path=arguments.output_path)
-    else:
-        data_processer = data_process.RasaData(arguments.origin_data, output_path=arguments.output_path)
-    if os.path.exists(os.path.join(arguments.output_path,'vocab.txt')):
-        vocab,vocab_list,intent = data_processer.load_vocab_and_intent()
-    else:
-        vocab,vocab_list,intent = data_processer.create_vocab_dict()
-
-    intent_ids = {key:index for index,key in enumerate(intent)}
-    # tfrecore 文件写入
-    tfrecord_save_path = os.path.join(classify_config.save_path,"train.tfrecord")
-    tfrecord_writer = tf.python_io.TFRecordWriter(tfrecord_save_path)
-
-    def thread_write_to_file(file,intent_folder,tfrecord_writer):
-        lock = threading.Lock()
-        for sentence, intent in data_processer.load_single_file(file):
-            sentence_ids = pad_sentence(sentence, classify_config.max_sentence_length, vocab)
-            # sentence_ids_string = np.array(sentence_ids).tostring()
-
-            if intent_folder == "":
-                intent_to_writer = intent
-            else:
-                intent_to_writer = intent_folder
-            print('writer intent:%s' % intent_to_writer)
-            train_feature_item = tf.train.Example(features=tf.train.Features(feature={
-                'label': _int64_feature(intent_ids[intent_to_writer]),
-                'sentence': _int64_feature(sentence_ids, need_list=False)
-            }))
-            with lock:
-                tfrecord_writer.write(train_feature_item.SerializeToString())
-
-    #pool = threadpool.ThreadPool(20)
-
-    #args = [((file,intent,tfrecord_writer),None) for file,intent in data_processer.getTotalfiles()]
-    #requests = threadpool.makeRequests(thread_write_to_file,args)
-    #[pool.putRequest(req) for req in requests]
-    #pool.wait()
-    for file ,intent in data_processer.getTotalfiles():
-        thread_write_to_file(file,intent,tfrecord_writer)
-    tfrecord_writer.close()
-
-def input_fn(classify_config, shuffle_num, mode,epochs):
-    """
-     build tf.data set for input pipeline
-
-    :param classify_config: classify config dict
-    :param shuffle_num: type int number , random select the data
-    :param mode: type string ,tf.estimator.ModeKeys.TRAIN or tf.estimator.ModeKeys.PREDICT
-    :return: set() with type of (tf.data , and labels)
-    """
-    def parse_single_tfrecord(serializer_item):
-        features = {
-            'label': tf.FixedLenFeature([],tf.int64),
-            'sentence' : tf.FixedLenFeature([classify_config.max_sentence_length],tf.int64)
-        }
-
-        features_var = tf.parse_single_example(serializer_item,features)
-
-        labels = tf.cast(features_var['label'],tf.int64)
-        #sentence = tf.decode_raw(features_var['sentence'],tf.uint8)
-        sentence = tf.cast(features_var['sentence'],tf.int64)
-        return sentence,labels
-
-
-
-    tf_record_filename = os.path.join(classify_config.save_path,'train.tfrecord')
-    if not os.path.exists(tf_record_filename):
-        raise FileNotFoundError("tfrecord not found")
-    tf_record_reader = tf.data.TFRecordDataset(tf_record_filename)
-
-
-    if mode == tf.estimator.ModeKeys.TRAIN:
-        dataset = tf_record_reader.map(parse_single_tfrecord).shuffle(shuffle_num).batch(classify_config.batch_size).repeat(epochs)
-    else:
-        dataset = tf_record_reader.map(parse_single_tfrecord).batch(classify_config.batch_size)
-
-    iterator = dataset.make_one_shot_iterator()
-    data, labels = iterator.get_next()
-    data = tf.reshape(data,[-1,classify_config.max_sentence_length])
-    return data, labels
 
 def train(arguments):
     if arguments.data_type == 'default':
         data_processer = data_process.NormalData(arguments.origin_data,output_path=arguments.output_path)
     else:
-        data_processer = data_process.RasaData(arguments.origin_data, output_path=arguments.output_path)
-    classify_config = CNNConfig()
-    classify_config.save_path = output_path
-    if not os.path.exists(classify_config.save_path):
-        os.makedirs(classify_config.save_path)
+        data_processer = None #data_process.RasaData(arguments.origin_data, output_path=arguments.output_path)
 
-    vocab,vocab_list,intent = data_processer.load_vocab_and_intent()
+    vocab, vocab_list, labels = data_processer.load_vocab_and_labels()
+
+    ner_config = NerConfig(vocab_size=len(vocab_list),num_tags=len(labels),max_seq_length=50)
+    ner_config.output_path = output_path
+    if not os.path.exists(ner_config.output_path):
+        os.makedirs(ner_config.output_path)
 
 
-    classify_config.vocab_size = len(vocab_list)
-    classify_config.label_nums = len(intent)
-
-    os.environ["CUDA_VISIBLE_DEVICES"] = classify_config.CUDA_VISIBLE_DEVICES
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
     with tf.Graph().as_default():
-        training_input_x,training_input_y = input_fn(classify_config,
-                                                          shuffle_num=500000,
-                                                          mode=tf.estimator.ModeKeys.TRAIN,
-                                                          epochs=classify_config.epochs)
-
-        classify_model = ClassifyCnnModel(classify_config)
+        training_input_x,training_input_y = input_fn(os.path.join(arguments.output_path,'train.tfrecord'),
+                                                     shuffle_num=500000,
+                                                     mode=tf.estimator.ModeKeys.TRAIN,
+                                                     epochs= 30,
+                                                     batch_size= ner_config.batch_size,
+                                                     max_sentence_length=ner_config.max_seq_length,
+                                                     )
+        if arguments.ner_type == "idcnn":
+            ner_config.filter_width = 3
+            ner_config.num_filter = ner_config.hidden_size
+            ner_config.repeat_times = 4
+            classify_model = IdCnn(ner_config)
+        else:
+            ner_config.cell_type = 'lstm'
+            ner_config.bilstm_layer_nums = 2
+            classify_model = BiLSTM(ner_config)
         classify_model.train(training_input_x,training_input_y)
 
-        classify_model.make_pb_file(classify_config.save_path)
+        #classify_model.make_pb_file(classify_config.save_path)
+
+def bert_train(args):
+    os.environ['CUDA_VISIBLE_DEVICES'] = args.device_map
+    if args.data_type == 'default':
+        data_processer = data_process.NormalData(args.origin_data,output_path=args.output_path)
+    else:
+        data_processer = None #data_process.RasaData(arguments.origin_data, output_path=arguments.output_path)
+
+    vocab, vocab_list, labels = data_processer.load_vocab_and_labels()
+
+    bert_config = bert_modeling.BertConfig.from_json_file(os.path.join(args.bert_model_path,"bert_config.json"))
+    if args.max_sentence_len > bert_config.max_position_embeddings:
+        raise ValueError(
+            "Cannot use sequence length %d because the BERT model "
+            "was only trained up to sequence length %d" %
+            (args.max_sentence_len, bert_config.max_position_embeddings)
+        )
+
+    ner_config = NerConfig(vocab_size=len(vocab_list), num_tags=len(labels), max_seq_length=args.max_sentence_len)
+    ner_config.output_path = output_path
+    if not os.path.exists(ner_config.output_path):
+        os.makedirs(ner_config.output_path)
+
+
+    with tf.Graph().as_default():
+        bert_input = bert_input_fn(os.path.join(args.output_path,'train.tfrecord'),
+                                                     mode=tf.estimator.ModeKeys.TRAIN,
+                                                     batch_size= ner_config.batch_size,
+                                                     max_sentence_length=ner_config.max_seq_length
+                                                     )
+        if args.ner_type == "idcnn":
+            ner_config.filter_width = 3
+            ner_config.num_filter = ner_config.hidden_size
+            ner_config.repeat_times = 4
+        else:
+            ner_config.cell_type = 'lstm'
+            ner_config.bilstm_layer_nums = 2
+        ner_config.ner_type = args.ner_type
+        ner_config.embedding_size = bert_config.hidden_size
+        model = BertNerModel(ner_config,bert_config)
+        model.train(bert_input['input_ids'],bert_input['input_mask'],bert_input['segment_ids'],bert_input['label_ids'])
+
 
 if __name__ == '__main__':
 
     argument_dict = argument_parser()
 
-    classify_config = CNNConfig()
 
     output_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), argument_dict.output_path)
     if not os.path.exists(output_path):
         os.mkdir(output_path)
 
-    classify_config.save_path = output_path
     argument_dict.output_path = output_path
-    make_tfrecord_files(argument_dict, classify_config)
-    train(argument_dict)
+    if argument_dict.use_bert:
+        bert_make_tfrecord_files(argument_dict)
+        bert_train(argument_dict)
+    else:
+        make_tfrecord_files(argument_dict)
+        train(argument_dict)

@@ -1,13 +1,10 @@
 # create by fanfan on 2019/4/15 0015
 import os
-import json
-import tqdm
-import jieba
 import random
 
 class NormalData():
-    def __init__(self,folder,min_freq=1,output_path=None):
-        self._START_VOCAB = ['_PAD', '_GO', "_EOS", '<UNK>']
+    def __init__(self,folder,output_path=None):
+        self._START_LABEL = ['[CLS]','[SEP]']
         self.folder_path = folder
         self.output_path = output_path
 
@@ -36,23 +33,24 @@ class NormalData():
 
 
 
-    def create_vocab_dict(self):
-        vocab = {}
+    def create_label_dict(self,bert_model_path):
         label_list = set()
         for line  in self.load_data():
             for token in line:
                 word_and_type = token.split("\\")
-                if word_and_type[0] in vocab:
-                    vocab[word_and_type[0]] += 1
-                else:
-                    vocab[word_and_type[0]] = 1
-
                 if len(word_and_type) == 2:
                     label_list.add(word_and_type[1])
-        vocab = {key: value for key, value in vocab.items()}
-        vocab_list = self._START_VOCAB + sorted(vocab, key=vocab.get, reverse=True)
-        vocab_dict = {key: index for index, key in enumerate(vocab_list)}
-        label_list = ['O']  + list(label_list)
+        label_list =  ['O']  + list(label_list) + self._START_LABEL
+
+
+        vocab_list = []
+        vocab_path = os.path.join(bert_model_path,'vocab.txt')
+        with open(vocab_path,'r',encoding='utf-8') as fread:
+            for word in fread:
+                vocab_list.append(word.strip())
+        vocab_dict = {key:index for index,key in enumerate(vocab_list)}
+
+
 
         if self.output_path != None:
             with open(os.path.join(self.output_path, "vocab.txt"), 'w', encoding='utf-8') as fwrite:
@@ -84,4 +82,4 @@ class NormalData():
 
 if __name__ == '__main__':
     normal_data = NormalData(r'E:\qiufengfeng_ubuntu_beifen\word_vec_mode\ner_right')
-    normal_data.create_vocab_dict()
+    #normal_data.create_vocab_dict()
