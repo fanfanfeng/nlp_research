@@ -91,7 +91,7 @@ def make_tfrecord_files(args):
 
     def thread_write_to_file(file):
         for sentence in data_processer.load_single_file(file):
-            sentence_ids,sentence_labels_ids = pad_sentence(sentence, args.max_sentence_length, vocab,labels_ids)
+            sentence_ids,sentence_labels_ids = pad_sentence(sentence, args.max_sentence_len, vocab,labels_ids)
             # sentence_ids_string = np.array(sentence_ids).tostring()
 
             train_feature_item = tf.train.Example(features=tf.train.Features(feature={
