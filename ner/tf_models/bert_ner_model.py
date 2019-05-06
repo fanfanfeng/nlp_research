@@ -144,7 +144,7 @@ class BertNerModel(object):
             sess.graph.as_default()
             tf.import_graph_def(graph_def, name="")
 
-        input_node = sess.graph.get_tensor_by_name(constant.INPUT_NODE_NAME).outputs[0]
-        input_mask_node = sess.graph.get_tensor_by_name(constant.INPUT_MASK_NAME).outputs[0]
-        logit_node = sess.graph.get_tensor_by_name(constant.OUTPUT_NODE_NAME).outputs[0]
+        input_node = sess.graph.get_operation_by_name(constant.INPUT_NODE_NAME).outputs[0]
+        input_mask_node = sess.graph.get_operation_by_name(constant.INPUT_MASK_NAME).outputs[0]
+        logit_node = sess.graph.get_operation_by_name(constant.OUTPUT_NODE_NAME).outputs[0]
         return sess, input_node,input_mask_node, logit_node

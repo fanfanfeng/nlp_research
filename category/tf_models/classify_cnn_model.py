@@ -1,38 +1,10 @@
 # create by fanfan on 2019/3/26 0026
-from category.tf_models.base_classify_model import BaseClassifyModel,ClassifyConfig
+from category.tf_models.base_classify_model import BaseClassifyModel
+from category.tf_models import constant
 import tensorflow as tf
 from tensorflow.contrib import layers
 import os
 
-
-class CNNConfig(ClassifyConfig):
-    """Configuration for `BertModel`."""
-
-    def __init__(self,
-               vocab_size=1000,
-               hidden_size=256,
-               embedding_size=256,
-               num_hidden_layers=2,
-               dropout_prob=0.2,
-               initializer_range=0.02,
-                learning_rate=0.001,
-                 max_sentence_length=50
-                 ):
-
-        super().__init__(self)
-        self.vocab_size = vocab_size
-        self.hidden_size = hidden_size
-        self.num_hidden_layers = num_hidden_layers
-        self.dropout_prob = dropout_prob
-        self.initializer_range = initializer_range
-        self.learning_rate = learning_rate
-        self.max_sentence_length = max_sentence_length
-        self.embedding_size = embedding_size
-
-
-        self.num_filters = 128
-        self.filter_sizes = [2,3,4,5]
-        self.label_nums = 4
 
 
 
@@ -40,6 +12,8 @@ class CNNConfig(ClassifyConfig):
 class ClassifyCnnModel(BaseClassifyModel):
     def __init__(self,classify_config):
         BaseClassifyModel.__init__(self,classify_config)
+        self.num_filters = 128
+        self.filter_sizes = [2, 3, 4, 5]
 
     def classify_layer(self, input_embedding,dropout):
         input_embedding_expand = tf.expand_dims(input_embedding, -1)
@@ -47,12 +21,12 @@ class ClassifyCnnModel(BaseClassifyModel):
         # 创建卷积和池化层
         pooledOutputs = []
         # 创建卷积和池化层
-        for i, filterSize in enumerate(self.classify_config.filter_sizes):
+        for i, filterSize in enumerate(self.filter_sizes):
             # 卷积层，卷积核尺寸为filterSize * embeddingSize，卷积核的个数为numFilters
             # 初始化权重矩阵和偏置
             conv = layers.conv2d(inputs=input_embedding_expand,
-                                 num_outputs=self.classify_config.num_filters,
-                                 kernel_size=[filterSize,self.classify_config.embedding_size],
+                                 num_outputs=self.num_filters,
+                                 kernel_size=[filterSize,self.embedding_size],
                                  stride=1,
                                  padding='VALID',
                                  scope='conv_'+str(i),
@@ -60,7 +34,7 @@ class ClassifyCnnModel(BaseClassifyModel):
             # 池化层，最大池化，池化是对卷积后的序列取一个最大值
             pooled = layers.max_pool2d(
                 conv,
-                kernel_size=[self.classify_config.max_sentence_length - filterSize + 1,1],
+                kernel_size=[self.max_sentence_length - filterSize + 1,1],
                 stride=1,
                 padding='VALID',
                 scope='pool_'+ str(i)
@@ -69,7 +43,7 @@ class ClassifyCnnModel(BaseClassifyModel):
             pooledOutputs.append(pooled)
 
         # 得到CNN网络的输出长度
-        numFilterTotal = self.classify_config.num_filters * len(self.classify_config.filter_sizes)
+        numFilterTotal = self.num_filters * len(self.filter_sizes)
         # 池化后的维度不变，按照最后的维度channel来concat
         self.h_pool = tf.concat(pooledOutputs, 3)
         # 摊平成二维的数据输入到全连接层
@@ -81,7 +55,7 @@ class ClassifyCnnModel(BaseClassifyModel):
         h_dense = tf.layers.dense(self.h_drop, numFilterTotal, activation=tf.nn.tanh, use_bias=True)
 
         with tf.name_scope("output"):
-            logits = tf.layers.dense(h_dense,self.classify_config.label_nums)
+            logits = tf.layers.dense(h_dense,self.num_tags)
 
         return logits
 
@@ -94,12 +68,12 @@ class ClassifyCnnModel(BaseClassifyModel):
 
             sess = tf.Session(config=session_conf)
             with sess.as_default():
-                input_x = tf.placeholder(dtype=tf.int32,shape=(None,self.classify_config.max_sentence_length),name=self.classify_config.input_node_name)
+                input_x = tf.placeholder(dtype=tf.int32,shape=(None,self.max_sentence_length),name=constant.INPUT_NODE_NAME)
                 dropout = tf.placeholder_with_default(1.0,shape=(), name='dropout')
                 logits = self.create_model(input_x, dropout)
-                logits_output = tf.identity(logits,name=self.classify_config.output_node_logit)
+                logits_output = tf.identity(logits,name=constant.OUTPUT_NODE_LOGIT)
                 predict = tf.argmax(logits, axis=1, output_type=tf.int32,
-                                    name=self.classify_config.output_node_name)
+                                    name=constant.OUTPUT_NODE_NAME)
 
                 saver = tf.train.Saver(tf.global_variables(), max_to_keep=5)
                 checkpoint = tf.train.latest_checkpoint(model_dir)
@@ -108,7 +82,7 @@ class ClassifyCnnModel(BaseClassifyModel):
                 else:
                     raise FileNotFoundError("模型文件未找到")
 
-                output_graph_with_weight = tf.graph_util.convert_variables_to_constants(sess,sess.graph_def,[self.classify_config.output_node_name,self.classify_config.output_node_logit])
+                output_graph_with_weight = tf.graph_util.convert_variables_to_constants(sess,sess.graph_def,[constant.OUTPUT_NODE_NAME,constant.OUTPUT_NODE_LOGIT])
 
                 with tf.gfile.GFile(os.path.join(model_dir,'classify.pb'),'wb') as gf:
                     gf.write(output_graph_with_weight.SerializeToString())

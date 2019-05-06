@@ -1,4 +1,4 @@
 # create by fanfan on 2019/4/19 0019
-OUTPUT_NODE_NAME = "ner_out"
-INPUT_NODE_NAME = 'ner_input'
-INPUT_MASK_NAME = 'ner_input_mask'
+INPUT_NODE_NAME = 'input_x'
+OUTPUT_NODE_NAME = 'predict_index'
+OUTPUT_NODE_LOGIT = 'logit'

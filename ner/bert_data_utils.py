@@ -87,18 +87,23 @@ def make_tfrecord_files(args):
 
         labels_ids = {label:index for index,label in enumerate(labels)}
         def thread_write_to_file(file):
-            for sentence in data_processer.load_single_file(file):
+            for index,sentence in enumerate(data_processer.load_single_file(file)):
                 input_ids, label_ids, segment_ids, input_mask = pad_sentence(sentence, args.max_sentence_len, vocab, labels_ids)
                 # sentence_ids_string = np.array(sentence_ids).tostring()
-                try:
-                    train_feature_item = tf.train.Example(features=tf.train.Features(feature={
-                        'input_ids': _int64_feature(input_ids, need_list=False),
-                        'label_ids': _int64_feature(label_ids, need_list=False),
-                        'segment_ids': _int64_feature(segment_ids, need_list=False),
-                        'input_mask': _int64_feature(input_mask, need_list=False)
-                    }))
-                except Exception as e:
-                    print(1)
+                train_feature_item = tf.train.Example(features=tf.train.Features(feature={
+                    'input_ids': _int64_feature(input_ids, need_list=False),
+                    'label_ids': _int64_feature(label_ids, need_list=False),
+                    'segment_ids': _int64_feature(segment_ids, need_list=False),
+                    'input_mask': _int64_feature(input_mask, need_list=False)
+                }))
+
+                if index %100 == 5:
+                    print("""*** Example ***""")
+
+                    print('input_ids:%s' % " ".join([str(x) for x in input_ids]))
+                    print('input_mask: %s' % " ".join([str(x) for x in input_mask]))
+                    print('segment_ids: %s' % " ".join([str(x) for x in segment_ids]))
+                    print('label_ids:%s' % "".join([str(x) for x in label_ids]))
                 tfrecord_writer.write(train_feature_item.SerializeToString())
 
             # pool = threadpool.ThreadPool(20)

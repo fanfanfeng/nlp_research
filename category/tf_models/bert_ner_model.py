@@ -1,18 +1,16 @@
 # create by fanfan on 2019/4/24 0024
 import tensorflow as tf
 from third_models.bert import modeling as bert_modeling
-from ner.tf_models.bilstm import BiLSTM
-from ner.tf_models.idcnn import IdCnn
-from ner.tf_models import constant
-from tensorflow.contrib import crf
+from category.tf_models.classify_cnn_model import ClassifyCnnModel
+from category.tf_models import constant
 from sklearn.metrics import f1_score
 import tqdm
 import os
 
 
 class BertNerModel(object):
-    def __init__(self,ner_config,bert_config):
-        self.ner_config = ner_config
+    def __init__(self,classify_config,bert_config):
+        self.classify_config = classify_config
         self.bert_config = bert_config
 
 
@@ -28,13 +26,18 @@ class BertNerModel(object):
 
         # 获取对应的embedding 输入数据[batch_size, seq_length, embedding_size]
         embedding_input_x = bert_model_layer.get_sequence_output()
+        output_layer = bert_model_layer.get_pooled_output()
 
-        if self.ner_config.ner_type == "idcnn":
-            self.ner_model = IdCnn(self.ner_config)
+        if self.classify_config.category_type == "":
+            output_layer = tf.nn.dropout(output_layer,keep_prob=dropout)
+            with tf.name_scope("output"):
+                logits = tf.layers.dense(output_layer, self.classify_config.label_nums)
         else:
-            self.ner_model = BiLSTM(self.ner_config)
-        real_sentece_length = self.ner_model.get_setence_length(input_ids)
-        logits = self.ner_model.create_model(embedding_input_x,dropout,already_embedded=True,real_sentence_length=real_sentece_length)
+            if self.classify_config.ner_type == "cnn":
+                self.classify_model = ClassifyCnnModel(self.classify_config)
+
+            real_sentece_length = self.classify_model.get_setence_length(input_ids)
+            logits = self.classify_model.create_model(embedding_input_x,dropout,already_embedded=True,real_sentence_length=real_sentece_length)
         return logits
 
 

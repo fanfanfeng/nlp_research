@@ -29,7 +29,8 @@ class NormalData():
     def load_single_file(self,file):
         with open(file, 'r', encoding='utf-8') as fr:
             for line in fr:
-                yield line.strip().split(" ")
+                tokens = [token for token in line.strip().split(" ") if token != ""]
+                yield tokens
 
 
 
