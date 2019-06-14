@@ -34,16 +34,12 @@ def train(params):
                 params.max_seq_length,
                 mode=tf.estimator.ModeKeys.TRAIN)
 
-            test_input_x, test_decoder_input, test_decoder_output = input_fn(
-                os.path.join(params.output_path, "test.tfrecord"),
-                params.batch_size,
-                params.max_seq_length,
-                mode=tf.estimator.ModeKeys.EVAL)
+
 
             attention_seq2seq_obj = AttentionSeq(params)
             loss,globalStep,train_summaries ,train_op= attention_seq2seq_obj.make_train(training_input_x,training_decoder_input,training_decoder_output)
 
-            loss_eval = attention_seq2seq_obj.create_model(test_input_x,test_decoder_input,test_decoder_output)
+
 
             init = tf.global_variables_initializer()
 
@@ -58,19 +54,38 @@ def train(params):
 
             best_f1 = 100
 
-            for _ in tqdm.tqdm(range(60), desc="steps", miniters=10):
+            for _ in tqdm.tqdm(range(params.total_steps), desc="steps", miniters=10):
 
                 sess_loss, steps, _ = sess.run([loss, globalStep, train_op])
 
+                if steps % params.display_freq == 0:
+                    print("step:%s , current loss: %s" % (steps,sess_loss))
 
                 if steps % params.valid_freq == 0:
-                    f1_val = sess_loss #f1_score(train_y_var, predict_var, average='micro')
-                    print("current step:%s ,loss:%s , f1 :%s" % (steps, sess_loss, f1_val))
+                    test_input_x, test_decoder_input, test_decoder_output = input_fn(
+                        os.path.join(params.output_path, "test.tfrecord"),
+                        params.batch_size,
+                        params.max_seq_length,
+                        mode=tf.estimator.ModeKeys.EVAL)
+                    loss_eval, _ = attention_seq2seq_obj.create_model(test_input_x, test_decoder_input,
+                                                                      test_decoder_output)
+                    total_loss = 0
+                    count = 0
+                    try:
+                        while 1:
+                            loss_eval_batch = sess.run(loss_eval)
+                            total_loss += loss_eval_batch
+                            count += 1
+                    except tf.errors.OutOfRangeError:
+                        print("eval over")
 
-                    if f1_val < best_f1:
+                    total_loss = total_loss/count #f1_score(train_y_var, predict_var, average='micro')
+                    print("current  step:%s ,eval loss:%s " % (steps, total_loss))
+
+                    if total_loss < best_f1:
                         saver.save(sess, params.model_path, steps)
-                        print("new best f1: %s ,save to dir:%s" % (f1_val, params.model_path))
-                        best_f1 = f1_val
+                        print("new best f1: %s ,save to dir:%s" % (total_loss, params.model_path))
+                        best_f1 = total_loss
 
             print("save to dir:%s" % params.model_path)
 

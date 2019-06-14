@@ -53,7 +53,7 @@ def make_tfrecord_files(args):
     tfrecord_train_save_path = os.path.join(args.output_path, "train.tfrecord")
     tfrecord_test_save_path = os.path.join(args.output_path, "test.tfrecord")
     if not os.path.exists(tfrecord_train_save_path):
-        data_processer = NormalData(args.origin_data,output_path=args.output_path,max_vocab_size=args.vocab_size)
+        data_processer = NormalData(args.origin_data,output_path=args.output_path,max_vocab_size=args.vocab_size,min_freq=args.filter_size)
         if os.path.exists(os.path.join(args.output_path,'vocab.txt')):
             vocab,vocab_list = data_processer.load_vocab_and_intent()
         else:
@@ -126,6 +126,7 @@ def input_fn(input_file, batch_size,max_sentence_length, mode=tf.estimator.ModeK
                                                    batch_size,num_parallel_calls=8))
 
     iterator = dataset.make_one_shot_iterator()
+
     input, decoder_inpout,decoder_output = iterator.get_next()
     return input, decoder_inpout,decoder_output
 

@@ -85,7 +85,7 @@ class NormalData():
         vocab_list = self._START_VOCAB + sorted(vocab, key=vocab.get, reverse=True)
         print('过滤词频后，词库大小：%s' % len(vocab.values()))
 
-        if  self.max_vocab_size >= 0 and len(vocab_list) > self.max_vocab_size:
+        if  self.max_vocab_size > 0 and len(vocab_list) > self.max_vocab_size:
             vocab_list = vocab_list[:self.max_vocab_size]
         vocab_dict = {key: index for index, key in enumerate(vocab_list)}
 

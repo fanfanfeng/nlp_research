@@ -1,4 +1,6 @@
 # create by fanfan on 2017/10/11 0011
+import sys
+sys.path.append(r"/data/python_project/nlp_research")
 from dialog_system.attention_seq2seq import data_utils
 from dialog_system.attention_seq2seq.params import Params,TestParams
 from tensorflow.contrib.seq2seq.python.ops import beam_search_ops
@@ -44,12 +46,10 @@ class Meta_Load():
 
         outputs = []
         # This is a greedy decoder - outputs are just argmaxes of output_logits.
-        if self.params.beam_with <= 1:
-            outputs.append(self.ids2words(predicts[0],self.vocab_list))
-        else:
-            for i in range(self.params.beam_with):
-                ids = predicts[0][:,i]
-                outputs.append(self.ids2words(ids,self.vocab_list))
+
+        for i in range(self.params.beam_with):
+            ids = predicts[0][:,i]
+            outputs.append(self.ids2words(ids,self.vocab_list))
 
         # Forming output sentence on natural language
         output_sentence = "\n".join(outputs)
@@ -77,7 +77,7 @@ class Meta_Load():
 
 
 def predict():
-    params = TestParams()
+    params = Params()
     model_obj = Meta_Load(params)
     while True:
         text = input("请输入句子:")
