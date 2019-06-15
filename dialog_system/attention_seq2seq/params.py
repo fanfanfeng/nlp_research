@@ -47,9 +47,9 @@ class Params:
     cell_type =  'gru'             # 编码跟解码截断的RNN cell类型 , 默认: lstm
     attention_type =  'bahdanau'    # 注意力机制类型: (bahdanau, luong), 默认: bahdanau
     hidden_units =  256            # 隐层神经元个数
-    attention_size = 128
+    attention_size = 256
     depth = 4                       # 神经网络的层数
-    embedding_size =  256           # 编码跟解码输出的向量Embedding dimensions
+    embedding_size =  300           # 编码跟解码输出的向量Embedding dimensions
     vocab_size = 40000   # 词库大小
     filter_size = 2 # 过滤词频大小
     use_residual  = True            # 在每一层之间是不是使用残差网络

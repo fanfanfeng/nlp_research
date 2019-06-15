@@ -2,7 +2,9 @@
 import sys
 import os
 import random
-
+import re
+def find_and_validate(line):
+    return ''.join(re.findall(r'[\u4e00-\u9fff]+', line))
 
 def remove_punc(line):
     line = line.replace('。','')
@@ -40,8 +42,8 @@ class NormalData():
                     source,target = source_and_target
                     source = remove_punc(source)
                     target = remove_punc(target)
-                    source = source.strip().split(" ")
-                    target = target.strip().split(" ")
+                    source = [find_and_validate(word) for word in source.strip().split(" ") if find_and_validate(word) != ""]
+                    target = [find_and_validate(word) for word in target.strip().split(" ") if find_and_validate(word) != ""]
                     if source == [] or target == []:
                         continue
                     yield source,target

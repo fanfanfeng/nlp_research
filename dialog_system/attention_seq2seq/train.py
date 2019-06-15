@@ -62,30 +62,30 @@ def train(params):
                     print("step:%s , current loss: %s" % (steps,sess_loss))
 
                 if steps % params.valid_freq == 0:
-                    test_input_x, test_decoder_input, test_decoder_output = input_fn(
-                        os.path.join(params.output_path, "test.tfrecord"),
-                        params.batch_size,
-                        params.max_seq_length,
-                        mode=tf.estimator.ModeKeys.EVAL)
-                    loss_eval, _ = attention_seq2seq_obj.create_model(test_input_x, test_decoder_input,
-                                                                      test_decoder_output)
-                    total_loss = 0
-                    count = 0
-                    try:
-                        while 1:
-                            loss_eval_batch = sess.run(loss_eval)
-                            total_loss += loss_eval_batch
-                            count += 1
-                    except tf.errors.OutOfRangeError:
-                        print("eval over")
+                    #test_input_x, test_decoder_input, test_decoder_output = input_fn(
+                    #    os.path.join(params.output_path, "test.tfrecord"),
+                    #    params.batch_size,
+                    #    params.max_seq_length,
+                    #    mode=tf.estimator.ModeKeys.EVAL)
+                    #loss_eval, _ = attention_seq2seq_obj.create_model(test_input_x, test_decoder_input,
+                    #                                                  test_decoder_output)
+                    #total_loss = 0
+                    #count = 0
+                    #try:
+                    #    while 1:
+                    #        loss_eval_batch = sess.run(loss_eval)
+                    #        total_loss += loss_eval_batch
+                    #        count += 1
+                    #except tf.errors.OutOfRangeError:
+                    #    print("eval over")
 
-                    total_loss = total_loss/count #f1_score(train_y_var, predict_var, average='micro')
-                    print("current  step:%s ,eval loss:%s " % (steps, total_loss))
+                    #total_loss = total_loss/count #f1_score(train_y_var, predict_var, average='micro')
+                    print("current  step:%s ,eval loss:%s " % (steps, sess_loss))
 
-                    if total_loss < best_f1:
+                    if sess_loss < best_f1:
                         saver.save(sess, params.model_path, steps)
-                        print("new best f1: %s ,save to dir:%s" % (total_loss, params.model_path))
-                        best_f1 = total_loss
+                        print("new best f1: %s ,save to dir:%s" % (sess_loss, params.model_path))
+                        best_f1 = sess_loss
 
             print("save to dir:%s" % params.model_path)
 
@@ -120,7 +120,7 @@ def make_pb_file(params):
 
 
 if __name__ == '__main__':
-    params = TestParams()
+    params = Params()
 
     if not os.path.exists(params.output_path):
         os.mkdir(params.output_path)
