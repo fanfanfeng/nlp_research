@@ -1,6 +1,7 @@
 # create by fanfan on 2019/6/6 0006
 import numpy as np
 import tensorflow as tf
+from tensorflow.contrib.layers.python.layers import xavier_initializer
 
 def layer_norm(inputs,epsilon=1e-8,scope='layer_norm'):
     '''Applies layer normalization. See https://arxiv.org/abs/1607.06450.
@@ -37,7 +38,7 @@ def get_token_embeddings(vocab_size,num_units,zero_pad = True):
     with tf.variable_scope('shared_weight_matrix'):
         embeddings = tf.get_variable("weight_mat",dtype=tf.float32,
                                      shape=(vocab_size,num_units),
-                                     initializer=tf.contrib.layer.xavier_initializer())
+                                     initializer=xavier_initializer())
         if zero_pad:
             embeddings = tf.concat((tf.zeros(shape=[1,num_units]),embeddings[1:,:]),0)
     return embeddings
@@ -68,7 +69,7 @@ def scaled_dot_product_attention(Q,K,V,causality=False,dropout_rate=0,
         # softmax
         outputs = tf.nn.softmax(outputs)
 
-        attention = tf.transpose(0,2,1)
+        attention = tf.transpose(outputs,(0,2,1))
         tf.summary.image('attention',tf.expand_dims(attention[:1],-1))
 
         # query masking
@@ -143,7 +144,7 @@ def mask(inputs,queries=None,keys=None,type=None):
 
 def multihead_attention(queries,keys,values,
                         num_heads=8,
-                        drouput_rate=0,
+                        dropout_rate=0,
                         training=True,
                         scope='multihead_attention'):
     '''Applies multihead attention. See 3.2.2
@@ -172,7 +173,7 @@ def multihead_attention(queries,keys,values,
         V_ = tf.concat( tf.split(V,num_heads,axis=2),axis=0) # (h*N,T_k,d_model/h)
 
         # Attention
-        outputs = scaled_dot_product_attention(Q_,K_,V_,dropout_rate=drouput_rate,training=training)
+        outputs = scaled_dot_product_attention(Q_,K_,V_,dropout_rate=dropout_rate,training=training)
 
         # Restore shape
         outputs = tf.concat(tf.split(outputs,num_heads,axis=0),axis=2) #(N,T_q,d_model)
