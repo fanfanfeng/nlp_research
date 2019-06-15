@@ -68,8 +68,8 @@ def make_tfrecord_files(args):
 
         for file  in data_processer.getTotalfiles():
             for index, (source, target) in enumerate(data_processer.load_single_file(file)):
-                source,target = find_and_validate(source),find_and_validate(target)
-                if source == "" or target == "":
+                #source,target = find_and_validate(source),find_and_validate(target)
+                if source == [] or target == []:
                     continue
                 source_ids,_ = pad_sentence(source, args.max_seq_length, vocab)
                 target_input,target_out = pad_sentence(target,args.max_seq_length,vocab,decoder=True)

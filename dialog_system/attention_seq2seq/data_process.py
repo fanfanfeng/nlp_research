@@ -63,7 +63,12 @@ class NormalData():
                 source_and_target = list(line.strip().split('\t'))
                 if len(source_and_target) != 2:
                     continue
-                yield list(line.strip().split('\t'))
+                source, target = source_and_target
+                source = [find_and_validate(word) for word in source.strip().split(" ") if
+                          find_and_validate(word) != ""]
+                target = [find_and_validate(word) for word in target.strip().split(" ") if
+                          find_and_validate(word) != ""]
+                yield source,target
 
 
 
