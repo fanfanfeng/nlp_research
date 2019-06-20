@@ -67,7 +67,7 @@ class Meta_Load():
 
 def predict():
 
-    model_obj = Meta_Load(r'E:\git-project\nlp_research\category\output')
+    model_obj = Meta_Load(r'E:\nlp-data\tmp\models\default\classify\EmbeddingIntentClassifierTf')
     while True:
         text = input("请输入句子\n")
         model_obj.predict(text)

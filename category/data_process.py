@@ -95,14 +95,17 @@ class RasaData():
         self.min_freq = min_freq
         self.output_path = output_path
 
-    def load_data(self):
+        self.train_folder = os.path.join(self.folder_path,'train')
+        self.test_folder = os.path.join(self.folder_path,'test')
+
+    def load_folder_data(self,folder_path):
 
         files = []
-        if os.path.isfile(self.folder_path):
-            files.append(self.folder_path)
+        if os.path.isfile(folder_path):
+            files.append(folder_path)
         else:
-            for file in os.listdir(self.folder_path):
-                files.append(os.path.join(self.folder_path, file))
+            for file in os.listdir(folder_path):
+                files.append(os.path.join(folder_path, file))
 
         for file in tqdm.tqdm(files):
             with open(file, 'r', encoding='utf-8') as fr:
@@ -113,14 +116,22 @@ class RasaData():
     def create_vocab_dict(self):
         vocab = {}
         intent_list = set()
-        for line, intent in self.load_data():
+        for line, intent in self.load_folder_data(self.train_folder):
             for word in line:
                 if word in vocab:
                     vocab[word] += 1
                 else:
                     vocab[word] = 1
-
             intent_list.add(intent)
+
+        for line, intent in self.load_folder_data(self.test_folder):
+            for word in line:
+                if word in vocab:
+                    vocab[word] += 1
+                else:
+                    vocab[word] = 1
+            intent_list.add(intent)
+
         vocab = {key: value for key, value in vocab.items() if value >= self.min_freq}
         vocab_list = self._START_VOCAB + sorted(vocab, key=vocab.get, reverse=True)
         vocab_dict = {key: index for index, key in enumerate(vocab_list)}
