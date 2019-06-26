@@ -5,7 +5,7 @@ from tensorflow.contrib import layers
 from ner.tf_models.base_ner_model import BasicNerModel
 
 class IdCnn(BasicNerModel):
-    def __init__(self,config):
+    def __init__(self,params):
         self.layers = [
             {
                 'dilation': 1
@@ -18,17 +18,15 @@ class IdCnn(BasicNerModel):
             },
         ]
 
-        super().__init__(ner_config=config)
-        self.filter_width = config.filter_width
-        self.num_filter = config.num_filter
-        self.repeat_times = config.repeat_times
+        super().__init__(params=params)
+
 
 
     def model_layer(self,model_inputs,dropout,sequence_length=None):
         model_inputs = tf.expand_dims(model_inputs, 1)
         with tf.variable_scope('idcnn_layer'):
             filter_weights = tf.get_variable('idcnn_filter',
-                                             shape=[1,self.filter_width,self.embedding_size,self.num_filter],
+                                             shape=[1,self.params.filter_width,self.params.embedding_size,self.params.num_filter],
                                              initializer=initializers.xavier_initializer())
             layerInput = tf.nn.conv2d(model_inputs,
                                       filter_weights,
@@ -38,15 +36,15 @@ class IdCnn(BasicNerModel):
 
             finalOutFromLayers = []
             totalWidthForLastDim = 0
-            for j in range(self.repeat_times):
+            for j in range(self.params.repeat_times):
                 for i in range(len(self.layers)):
                     dilation = self.layers[i]['dilation']
                     isLast = True if i == (len(self.layers) - 1) else False
                     with tf.variable_scope('atrous_conv_layer_%d' % i,reuse=True if j>0 else False):
                         w = tf.get_variable('filter_W',
-                                            shape=[1,self.filter_width,self.num_filter,self.num_filter],
+                                            shape=[1,self.params.filter_width,self.params.num_filter,self.params.num_filter],
                                             initializer=initializers.xavier_initializer())
-                        b = tf.get_variable('filter_b',shape=[self.num_filter])
+                        b = tf.get_variable('filter_b',shape=[self.params.num_filter])
 
                         conv = tf.nn.atrous_conv2d(layerInput,w,rate=dilation,padding='SAME')
 
@@ -54,7 +52,7 @@ class IdCnn(BasicNerModel):
                         conv = tf.nn.relu(conv)
                         if isLast:
                             finalOutFromLayers.append(conv)
-                            totalWidthForLastDim += self.num_filter
+                            totalWidthForLastDim += self.params.num_filter
 
             finalOut = tf.concat(axis=3,values=finalOutFromLayers)
             finalOut = tf.nn.dropout(finalOut,dropout)
@@ -73,6 +71,6 @@ class IdCnn(BasicNerModel):
         with  tf.variable_scope('project' if not name else name):
             # project to score of tags
             with tf.variable_scope('logits'):
-                logit = layers.fully_connected(model_outputs,self.num_tags,activation_fn=None)
+                logit = layers.fully_connected(model_outputs,self.params.num_tags,activation_fn=None)
 
-            return tf.reshape(logit,[-1,self.max_seq_length,self.num_tags])
+            return tf.reshape(logit,[-1,self.params.max_seq_length,self.params.num_tags])

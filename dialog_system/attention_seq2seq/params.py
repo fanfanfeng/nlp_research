@@ -1,5 +1,6 @@
 # create by fanfan on 2017/8/25 0025
 import os
+import json
 
 
 projectDir =  os.path.dirname(os.path.abspath(__file__))
@@ -31,13 +32,36 @@ class TestParams:
     optimizer = 'adam'              # 训练时候的优化器: (adadelta, adam, rmsprop)
     filter_size = 5  # 过滤词频大小
 
-    model_path = os.path.join(output_path,'model/chat')         # 模型保存位置
     device_map = "0"
 
     #decode模式下面，最大搜索深度
     beam_with =1
     total_steps = 600
 
+    @property
+    def model_path(self):
+        return os.path.join(self.output_path, 'model_ckpt')
+
+    @property
+    def params_path(self):
+        return os.path.join(self.output_path, 'params.txt')
+
+    def update_object(self, object):
+        self.__dict__.update(object.__dict__)
+
+    def update_dict(self, dict):
+        self.__dict__.update(dict)
+
+    def save_to_file(self):
+        dict_to_save = {}
+        dict_to_save['max_seq_length'] = self.max_seq_length
+        with open(self.params_path, "w", encoding='utf-8') as fwrite:
+            json.dump(dict_to_save, fwrite)
+
+    def load_from_file(self):
+        with open(self.params_path, "r", encoding='utf-8') as fread:
+            temp_params = json.load(fread)
+        self.update_dict(temp_params)
 
 class Params:
     origin_data = os.path.join(projectDir,'data')
@@ -68,11 +92,34 @@ class Params:
     total_steps = 60000
 
 
-    model_path = os.path.join(output_path,'model/chat')         # 模型保存位置
     device_map = "0"
 
     #decode模式下面，最大搜索深度
     beam_with = 1
+
+    @property
+    def model_path(self):
+        return os.path.join(self.output_path, 'model_ckpt')
+
+    @property
+    def params_path(self):
+        return os.path.join(self.output_path, 'params.txt')
+
+    def update_object(self, object):
+        self.__dict__.update(object.__dict__)
+
+    def update_dict(self, dict):
+        self.__dict__.update(dict)
+
+    def save_to_file(self):
+        with open(self.params_path,"w",encoding='utf-8') as fwrite:
+            json.dump(self.__dict__,fwrite)
+
+
+    def load_from_file(self):
+        with open(self.params_path,"r",encoding='utf-8') as fread:
+            temp_params = json.load(fread)
+        self.update_dict(temp_params)
 
 
 

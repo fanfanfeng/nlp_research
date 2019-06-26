@@ -120,14 +120,14 @@ def make_pb_file(params):
 
 
 if __name__ == '__main__':
-    params = Params()
+    params = TestParams()
 
     if not os.path.exists(params.output_path):
         os.mkdir(params.output_path)
 
 
 
-
+    params.save_to_file()
 
     make_tfrecord_files(params)
     train(params)

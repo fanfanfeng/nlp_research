@@ -18,9 +18,17 @@ class TestParams:
     embedding_size = 10
     initializer_range = 0.02
 
+    cell_type = 'gru'  # bilstm 参数
+    bilstm_layer_nums = 2  # bilstm 参数
+
+    filter_width = 3  # idcnn参数
+    num_filter = 256  # idcnn参数
+    repeat_times = 4  # idcnn参数
+
     # 训练参数
     #model_path = os.path.join(output_path, 'model_ckpt/tf')
     total_train_steps = 100
+    shuffle_num = 10
     batch_size = 10
     dropout_prob = 0.7
     learning_rate = 0.0001
@@ -56,9 +64,17 @@ class Params:
     embedding_size = 256
     initializer_range = 0.02
 
+    cell_type = 'gru'      # bilstm 参数
+    bilstm_layer_nums = 2  # bilstm 参数
+
+    filter_width = 3 #idcnn参数
+    num_filter = 256 #idcnn参数
+    repeat_times = 4 #idcnn参数
+
     # 训练参数
     #model_path = os.path.join(output_path, 'model_ckpt/tf')
     total_train_steps = 100000
+    shuffle_num = 1000000
     batch_size = 256
     dropout_prob = 0.7
     learning_rate = 0.0001
