@@ -4,7 +4,6 @@ from category.tf_models import constant
 import tensorflow as tf
 from tensorflow.contrib import layers
 import os
-from category.tf_models.params import Params
 
 
 
@@ -16,7 +15,7 @@ class ClassifyCnnModel(BaseClassifyModel):
         self.num_filters = 128
         self.filter_sizes = [2, 3, 4, 5]
 
-    def classify_layer(self, input_embedding,dropout):
+    def classify_layer(self, input_embedding,dropout,real_sentence_length=None):
         input_embedding_expand = tf.expand_dims(input_embedding, -1)
 
         # 创建卷积和池化层

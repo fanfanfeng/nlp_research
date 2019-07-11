@@ -20,7 +20,8 @@ class BaseClassifyModel(object):
         length = tf.cast(length, tf.int32)
         return length
 
-    def create_model(self,input_x,dropout,already_embedded=False,real_sentence_length=None):
+    def create_model(self,input_x,dropout,already_embedded=False):
+        real_sentence_length = self.get_setence_length(input_x)
         with tf.variable_scope("model_define",reuse=tf.AUTO_REUSE) as scope:
             if already_embedded:
                 input_embeddings = input_x
@@ -30,7 +31,7 @@ class BaseClassifyModel(object):
                     input_embeddings = tf.nn.embedding_lookup(word_embeddings, input_x)
 
             with tf.variable_scope('classify_layer'):
-                output_layer = self.classify_layer(input_embeddings,dropout)
+                output_layer = self.classify_layer(input_embeddings,dropout,real_sentence_length)
             logits = output_layer
         return logits
 
@@ -86,7 +87,7 @@ class BaseClassifyModel(object):
             sess.run(tf.global_variables_initializer())
 
 
-    def classify_layer(self, input_embedding,dropout):
+    def classify_layer(self, input_embedding,dropout,real_sentence_length=None):
         """Implementation of specific classify layer"""
         raise NotImplementedError()
 

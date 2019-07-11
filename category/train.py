@@ -5,6 +5,8 @@ import tensorflow as tf
 from utils.tfrecord_api import _int64_feature
 from category.data_utils import pad_sentence
 from category.tf_models.classify_cnn_model import ClassifyCnnModel
+from category.tf_models.classify_bilstm_model import  ClassifyBilstmModel
+from category.tf_models.classify_rcnn_model import ClassifyRcnnModel
 import os
 import tqdm
 import argparse
@@ -62,7 +64,13 @@ def train(params):
                                                          params.shuffle_num,
                                                          mode=tf.estimator.ModeKeys.TRAIN)
 
-            classify_model = ClassifyCnnModel(params)
+            if params.category_type == 'cnn':
+                classify_model = ClassifyCnnModel(params)
+            elif params.category_type == "bilstm":
+                classify_model = ClassifyBilstmModel(params)
+            elif params.category_type == "rcnn":
+                classify_model = ClassifyRcnnModel(params)
+
             loss,global_step,train_op,merger_op = classify_model.make_train(training_input_x,training_input_y)
 
 
@@ -118,7 +126,7 @@ if __name__ == '__main__':
         os.mkdir(output_path)
     argument_dict.output_path = output_path
 
-    params = TestParams()
+    params = Params()
     params.update_object(argument_dict)
 
     if params.use_bert:

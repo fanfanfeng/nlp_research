@@ -16,8 +16,13 @@ class TestParams:
     # 网络参数
     hidden_size = 10
     embedding_size = 10
+    attention_size = 10
     initializer_range = 0.02
     shuffle_num=10
+
+    # bilstm layer
+    layer_num = 1
+    use_attention = True
 
     # 训练参数
     #model_path = os.path.join(output_path, 'model_ckpt/tf')
@@ -55,7 +60,12 @@ class Params:
     # 网络参数
     hidden_size = 256
     embedding_size = 256
+    attention_size = 200
     initializer_range = 0.02
+
+    # bilstm layer
+    layer_num = 2
+    use_attention = True
 
     # 训练参数
     #model_path = os.path.join(output_path, 'model_ckpt/tf')
