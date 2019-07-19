@@ -2,17 +2,22 @@
 import sys
 sys.path.append(r"/data/python_project/nlp_research")
 import tensorflow as tf
-from utils.tfrecord_api import _int64_feature
-from category.data_utils import pad_sentence
 from category.tf_models.classify_cnn_model import ClassifyCnnModel
 from category.tf_models.classify_bilstm_model import  ClassifyBilstmModel
 from category.tf_models.classify_rcnn_model import ClassifyRcnnModel
+from category.tf_models.bert_classify_model import BertClassifyModel
+from category.tf_models.classify_ensemble_model import ClassifyEnsembleModel
 import os
 import tqdm
 import argparse
-from category import  data_process
-from category.data_utils import input_fn,make_tfrecord_files
+from category.tf_utils import data_process
+from category.tf_utils.data_utils import input_fn,make_tfrecord_files
+from category.tf_utils.bert_data_utils import input_fn as bert_input_fn
+from category.tf_utils.bert_data_utils import make_tfrecord_files as bert_make_tfrecord_files
+
+
 from category.tf_models.params import Params,TestParams
+from third_models.bert import modeling as bert_modeling
 from sklearn.metrics import f1_score
 
 
@@ -39,7 +44,7 @@ def argument_parser():
 
 def train(params):
     if params.data_type == 'default':
-        data_processer = data_process.NormalData(params.origin_data,output_path=params.output_path)
+        data_processer = data_process.NormalData(params.origin_data, output_path=params.output_path)
     else:
         data_processer = data_process.RasaData(params.origin_data, output_path=params.output_path)
     if not os.path.exists(params.output_path):
@@ -70,6 +75,10 @@ def train(params):
                 classify_model = ClassifyBilstmModel(params)
             elif params.category_type == "rcnn":
                 classify_model = ClassifyRcnnModel(params)
+            elif params.category_type == 'ensemble':
+                classify_model = ClassifyEnsembleModel(params)
+            else:
+                raise ValueError("category_type error")
 
             loss,global_step,train_op,merger_op = classify_model.make_train(training_input_x,training_input_y)
 
@@ -113,10 +122,90 @@ def train(params):
                             print("new best f1: %s ,save to dir:%s" % (f1_val, params.output_path))
                             best_f1 = f1_val
 
+            classify_model.make_pb_file(params.output_path)
 
 
 
-        classify_model.make_pb_file(params.output_path)
+def bert_train(params):
+    if params.data_type == 'default':
+        data_processer = data_process.NormalData(params.origin_data, output_path=params.output_path)
+    else:
+        data_processer = data_process.RasaData(params.origin_data, output_path=params.output_path)
+    if not os.path.exists(params.output_path):
+        os.makedirs(params.output_path)
+
+    vocab,vocab_list,intent = data_processer.load_vocab_and_intent()
+
+    params.vocab_size = len(vocab_list)
+    params.num_tags = len(intent)
+
+    bert_config = bert_modeling.BertConfig.from_json_file(os.path.join(params.bert_model_path, "bert_config.json"))
+    if params.max_sentence_length > bert_config.max_position_embeddings:
+        raise ValueError(
+            "Cannot use sequence length %d because the BERT model "
+            "was only trained up to sequence length %d" %
+            (params.max_sentence_length, bert_config.max_position_embeddings)
+        )
+
+    os.environ["CUDA_VISIBLE_DEVICES"] = params.device_map
+    with tf.Graph().as_default():
+        session_conf = tf.ConfigProto(allow_soft_placement=True, log_device_placement=False)
+        session_conf.gpu_options.allow_growth = True
+        session_conf.gpu_options.per_process_gpu_memory_fraction = 0.9
+
+        sess = tf.Session(config=session_conf)
+        with sess.as_default():
+            bert_input_dict = bert_input_fn(os.path.join(params.output_path,"train.tfrecord"),
+                                                         params.batch_size,
+                                                         params.max_sentence_length,
+                                                         params.shuffle_num,
+                                                         mode=tf.estimator.ModeKeys.TRAIN)
+
+            classify_model = BertClassifyModel(params,bert_config)
+
+            loss,global_step,train_op,merger_op = classify_model.make_train(bert_input_dict['input_ids'],bert_input_dict['input_mask'],bert_input_dict['segment_ids'],bert_input_dict['label_ids'])
+
+
+            # 初始化所有变量
+            saver = tf.train.Saver(tf.global_variables(), max_to_keep=5)
+            classify_model.model_restore(sess,saver)
+
+            best_f1 = 0
+            for _ in tqdm.tqdm(range(params.total_train_steps), desc="steps", miniters=10):
+                sess_loss, steps, _ = sess.run([loss, global_step, train_op])
+
+                if steps % params.evaluate_every_steps == 0:
+                    test_input_dict = bert_input_fn(os.path.join(params.output_path, "test.tfrecord"),
+                                                                  params.batch_size,
+                                                                  params.max_sentence_length,
+                                                                  params.shuffle_num,
+                                                                  mode=tf.estimator.ModeKeys.EVAL)
+                    loss_test,predict_test = classify_model.make_test(test_input_dict['input_ids'],test_input_dict['input_mask'],test_input_dict['segment_ids'],test_input_dict['label_ids'])
+
+                    predict_var = []
+                    train_y_var = []
+                    loss_total = 0
+                    num_batch = 0
+                    try:
+                        while 1:
+                            loss_,predict_,test_input_y_ = sess.run([loss_test,predict_test,test_input_dict['label_ids']])
+                            loss_total += loss_
+                            num_batch += 1
+                            predict_var += predict_.tolist()
+                            train_y_var += test_input_y_.tolist()
+                            break
+                    except tf.errors.OutOfRangeError:
+                        print("eval over")
+                    if num_batch > 0:
+
+                        f1_val = f1_score(train_y_var, predict_var, average='micro')
+                        print("current step:%s ,loss:%s , f1 :%s" % (steps, loss_total/num_batch, f1_val))
+
+                        if f1_val >= best_f1:
+                            saver.save(sess, params.model_path, steps)
+                            print("new best f1: %s ,save to dir:%s" % (f1_val, params.output_path))
+                            best_f1 = f1_val
+            classify_model.make_pb_file(params.output_path)
 
 if __name__ == '__main__':
 
@@ -126,12 +215,12 @@ if __name__ == '__main__':
         os.mkdir(output_path)
     argument_dict.output_path = output_path
 
-    params = Params()
+    params = TestParams()
     params.update_object(argument_dict)
 
     if params.use_bert:
-        #bert_make_tfrecord_files(argument_dict)
-        #bert_train(argument_dict)
+        bert_make_tfrecord_files(params)
+        bert_train(params)
         pass
     else:
         make_tfrecord_files(params)

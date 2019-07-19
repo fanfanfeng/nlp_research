@@ -39,11 +39,7 @@ class ClassifyBilstmModel(BaseClassifyModel):
                 last_output = tf.nn.dropout(rnn_attention_outputs, dropout)
         else:
             last_output = outputs[:, -1, :]
-
-        with tf.name_scope("output"):
-            logits = tf.layers.dense(last_output,self.params.num_tags,)
-
-        return logits
+        return last_output
 
     def attention_layer(self,inputs,attention_size):
         """

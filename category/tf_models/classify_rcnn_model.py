@@ -48,13 +48,7 @@ class ClassifyRcnnModel(BaseClassifyModel):
 
         # 做max-pool的操作，将时间步的维度消失
         max_pool = tf.reduce_max(textRepre,axis=1)
-
-
-
-        with tf.name_scope("output"):
-            logits = tf.layers.dense(max_pool,self.params.num_tags,)
-
-        return logits
+        return max_pool
 
     def make_pb_file(self,model_dir):
         graph = tf.Graph()

@@ -1,7 +1,10 @@
 # create by fanfan on 2019/4/10 0010
-import tensorflow as tf
 import os
-from ner import data_process
+
+import tensorflow as tf
+
+from ner.tf_utils import data_process
+
 _START_VOCAB = ['_PAD', '_GO', "_EOS", '<UNK>']
 from utils.tfrecord_api import _int64_feature
 
@@ -98,8 +101,15 @@ def input_fn(tf_record_filename,batch_size, shuffle_num,max_sentence_length,mode
 
 
 def make_tfrecord_files(params):
+    # tfrecore 文件写入
+    tfrecord_save_path = os.path.join(params.output_path, "train.tfrecord")
+    # tfrecore 文件写入
+    tfrecord_test_path = os.path.join(params.output_path, "test.tfrecord")
+
+    if os.path.exists(tfrecord_save_path):
+        return
     if params.data_type == 'default':
-        data_processer = data_process.NormalData(params.origin_data,output_path=params.output_path)
+        data_processer = data_process.NormalData(params.origin_data, output_path=params.output_path)
     else:
         data_processer = data_process.RasaData(params.origin_data, output_path=params.output_path)
 
@@ -109,16 +119,12 @@ def make_tfrecord_files(params):
         vocab,vocab_list,labels = data_processer.create_vocab_dict()
 
     labels_ids = {key:index for index,key in enumerate(labels)}
-    # tfrecore 文件写入
-    tfrecord_save_path = os.path.join(params.output_path,"train.tfrecord")
-    tfrecord_train_writer = tf.python_io.TFRecordWriter(tfrecord_save_path)
 
-    # tfrecore 文件写入
-    tfrecord_test_path = os.path.join(params.output_path, "test.tfrecord")
+    tfrecord_train_writer = tf.python_io.TFRecordWriter(tfrecord_save_path)
     tfrecord_test_writer = tf.python_io.TFRecordWriter(tfrecord_test_path)
 
     if params.data_type == 'default':
-        for file, folder_intent in data_processer.getTotalfiles():
+        for file in data_processer.getTotalfiles():
             for index, sentence in enumerate(data_processer.load_single_file(file)):
                 sentence_ids, sentence_labels_ids = pad_sentence(sentence, params.max_sentence_length, vocab,
                                                                  labels_ids)
@@ -129,7 +135,7 @@ def make_tfrecord_files(params):
                 if index % 10 == 1:
                     tfrecord_test_writer.write(feature_item.SerializeToString())
                 else:
-                    tfrecord_test_writer.write(feature_item.SerializeToString())
+                    tfrecord_train_writer.write(feature_item.SerializeToString())
     else:
         for sentence, sentence_labels in data_processer.load_folder_data(data_processer.train_folder):
             sentence_ids,sentence_labels_ids = pad_sentence_rasa(sentence, sentence_labels,params.max_sentence_length, vocab,labels_ids)

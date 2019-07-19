@@ -20,19 +20,25 @@ class BaseClassifyModel(object):
         length = tf.cast(length, tf.int32)
         return length
 
-    def create_model(self,input_x,dropout,already_embedded=False):
-        real_sentence_length = self.get_setence_length(input_x)
+    def create_model(self,input_x,dropout,already_embedded=False,real_sentence_length=None,need_logit=True):
         with tf.variable_scope("model_define",reuse=tf.AUTO_REUSE) as scope:
             if already_embedded:
                 input_embeddings = input_x
+                real_sentence_length = real_sentence_length
             else:
                 with tf.variable_scope('embeddings_layer'):
                     word_embeddings = tf.get_variable('word_embeddings', [self.params.vocab_size, self.params.embedding_size])
                     input_embeddings = tf.nn.embedding_lookup(word_embeddings, input_x)
+                    real_sentence_length = self.get_setence_length(input_x)
 
             with tf.variable_scope('classify_layer'):
                 output_layer = self.classify_layer(input_embeddings,dropout,real_sentence_length)
-            logits = output_layer
+
+            if need_logit:
+                with tf.name_scope("output"):
+                    logits = tf.layers.dense(output_layer, self.params.num_tags, )
+            else:
+                logits = output_layer
         return logits
 
     def make_train(self,inputX,inputY):

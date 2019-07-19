@@ -11,8 +11,8 @@ import os
 
 
 class BertNerModel(object):
-    def __init__(self,ner_config,bert_config):
-        self.ner_config = ner_config
+    def __init__(self,params,bert_config):
+        self.params = params
         self.bert_config = bert_config
 
 
@@ -29,10 +29,10 @@ class BertNerModel(object):
         # 获取对应的embedding 输入数据[batch_size, seq_length, embedding_size]
         embedding_input_x = bert_model_layer.get_sequence_output()
 
-        if self.ner_config.ner_type == "idcnn":
-            self.ner_model = IdCnn(self.ner_config)
+        if self.params.ner_type == "idcnn":
+            self.ner_model = IdCnn(self.params)
         else:
-            self.ner_model = BiLSTM(self.ner_config)
+            self.ner_model = BiLSTM(self.params)
         real_sentece_length = self.ner_model.get_setence_length(input_ids)
         logits,_,trans = self.ner_model.create_model(embedding_input_x,dropout,already_embedded=True,real_sentence_length=real_sentece_length)
         return logits,real_sentece_length,trans
@@ -53,7 +53,7 @@ class BertNerModel(object):
             globalStep = tf.Variable(0, name="globalStep", trainable=False)
             with tf.variable_scope('loss'):
                 loss = self.ner_model.crf_layer_loss(logits, label_ids, real_sentence_length,trans)
-                optimizer = tf.train.AdamOptimizer(self.ner_config.learning_rate)
+                optimizer = tf.train.AdamOptimizer(self.params.learning_rate)
 
                 grads_and_vars = optimizer.compute_gradients(loss)
                 trainOp = optimizer.apply_gradients(grads_and_vars, globalStep)
@@ -70,13 +70,13 @@ class BertNerModel(object):
             sess.run(tf.global_variables_initializer())
             tvars = tf.trainable_variables()
             # 加载BERT模型
-            bert_init_checkpoint = os.path.join(self.ner_config.bert_model_path,'bert_model.ckpt')
-            if os.path.exists(self.ner_config.bert_model_path):
+            bert_init_checkpoint = os.path.join(self.params.bert_model_path,'bert_model.ckpt')
+            if os.path.exists(self.params.bert_model_path):
                 (assignment_map, initialized_variable_names) = bert_modeling.get_assignment_map_from_checkpoint(tvars,
                                                                                                            bert_init_checkpoint)
                 tf.train.init_from_checkpoint(bert_init_checkpoint, assignment_map)
 
-            tf_save_path = os.path.join(self.ner_config.output_path, 'tf')
+            tf_save_path = os.path.join(self.params.output_path, 'tf')
             #try:
             best_f1 = 0
             for _ in tqdm.tqdm(range(40000), desc="steps", miniters=10):
@@ -85,7 +85,7 @@ class BertNerModel(object):
                     feed_dict={dropout: 0.8}
                 )
 
-                if steps % self.ner_config.evaluate_every_steps == 0:
+                if steps % self.params.evaluate_every_steps == 0:
                     train_labels = []
                     predict_labels = []
                     for train_, predict_, len_ in zip(input_y_val, predict_var, real_sentence):
@@ -96,7 +96,7 @@ class BertNerModel(object):
 
                     if f1_val > best_f1:
                         saver.save(sess, tf_save_path, steps)
-                        print("new best f1: %s ,save to dir:%s" % (f1_val, self.ner_config.output_path))
+                        print("new best f1: %s ,save to dir:%s" % (f1_val, self.params.output_path))
                         best_f1 = f1_val
             #except tf.errors.OutOfRangeError:
                 #print("training end")
@@ -110,8 +110,8 @@ class BertNerModel(object):
 
             sess = tf.Session(config=session_conf)
             with sess.as_default():
-                input_ids = tf.placeholder(dtype=tf.int32,shape=(None,self.ner_config.max_seq_length),name=constant.INPUT_NODE_NAME)
-                input_mask = tf.placeholder(dtype=tf.int32,shape=(None,self.ner_config.max_seq_length),name=constant.INPUT_MASK_NAME)
+                input_ids = tf.placeholder(dtype=tf.int32,shape=(None,self.params.max_sentence_length),name=constant.INPUT_NODE_NAME)
+                input_mask = tf.placeholder(dtype=tf.int32,shape=(None,self.params.max_sentence_length),name=constant.INPUT_MASK_NAME)
                 dropout = tf.placeholder_with_default(1.0,shape=(), name='dropout')
                 logits,real_sentence_length,trans = self.create_model(input_ids, input_mask, segment_ids=None, is_training=False, dropout=dropout)
                 pred_ids, _ = crf.crf_decode(potentials=logits, transition_params=trans,

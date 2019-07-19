@@ -26,7 +26,7 @@ class TestParams:
 
     # 训练参数
     #model_path = os.path.join(output_path, 'model_ckpt/tf')
-    total_train_steps = 100
+    total_train_steps = 5
     batch_size = 10
     dropout_prob = 0.7
     learning_rate = 0.0001

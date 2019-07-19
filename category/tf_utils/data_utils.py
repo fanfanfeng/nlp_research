@@ -1,12 +1,12 @@
 # create by fanfan on 2019/4/10 0010
 
-import jieba
-import json
 import os
 import sys
+
+import jieba
 import tensorflow as tf
-from category.data_process import RasaData,NormalData
-import threading
+
+from category.tf_utils.data_process import RasaData, NormalData
 from utils.tfrecord_api import _int64_feature
 
 _START_VOCAB = ['_PAD', '_GO', "_EOS", '<UNK>']

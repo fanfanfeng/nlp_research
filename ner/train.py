@@ -4,15 +4,15 @@ sys.path.append(r"/data/python_project/nlp_research")
 import os
 
 import argparse
-from ner import data_process
-from ner.tf_models.params import Params,TestParams
+from ner.tf_utils import data_process
+from ner.tf_models.params import TestParams
 from ner.tf_models.bilstm import BiLSTM
 from ner.tf_models.idcnn import IdCnn
 from ner.tf_models.bert_ner_model import BertNerModel
 import tensorflow as tf
-from ner.data_utils import input_fn,make_tfrecord_files
-from ner.bert_data_utils import input_fn as bert_input_fn
-from ner.bert_data_utils import make_tfrecord_files as bert_make_tfrecord_files
+from ner.tf_utils.data_utils import input_fn,make_tfrecord_files
+from ner.tf_utils.bert_data_utils import input_fn as bert_input_fn
+from ner.tf_utils.bert_data_utils import make_tfrecord_files as bert_make_tfrecord_files
 from third_models.bert import modeling as bert_modeling
 import tqdm
 from sklearn.metrics import f1_score
@@ -36,7 +36,7 @@ def argument_parser():
 
 def train(params):
     if params.data_type == 'default':
-        data_processer = data_process.NormalData(params.origin_data,output_path=params.output_path)
+        data_processer = data_process.NormalData(params.origin_data, output_path=params.output_path)
     else:
         data_processer = data_process.RasaData(params.origin_data, output_path=params.output_path)
 
@@ -110,48 +110,39 @@ def train(params):
 
             ner_model.make_pb_file(params.output_path)
 
-def bert_train(args):
-    os.environ['CUDA_VISIBLE_DEVICES'] = args.device_map
-    if args.data_type == 'default':
-        data_processer = data_process.NormalData(args.origin_data,output_path=args.output_path)
+def bert_train(params):
+    os.environ['CUDA_VISIBLE_DEVICES'] = params.device_map
+    if params.data_type == 'default':
+        data_processer = data_process.NormalData(params.origin_data, output_path=params.output_path)
     else:
-        data_processer = None #data_process.RasaData(arguments.origin_data, output_path=arguments.output_path)
+        data_processer = data_process.RasaData(params.origin_data, output_path=params.output_path)
 
     vocab, vocab_list, labels = data_processer.load_vocab_and_labels()
 
-    bert_config = bert_modeling.BertConfig.from_json_file(os.path.join(args.bert_model_path,"bert_config.json"))
-    if args.max_sentence_len > bert_config.max_position_embeddings:
+    bert_config = bert_modeling.BertConfig.from_json_file(os.path.join(params.bert_model_path,"bert_config.json"))
+    params.vocab_size = len(vocab_list)
+    params.num_tags = len(labels)
+    if params.max_sentence_length > bert_config.max_position_embeddings:
         raise ValueError(
             "Cannot use sequence length %d because the BERT model "
             "was only trained up to sequence length %d" %
-            (args.max_sentence_len, bert_config.max_position_embeddings)
+            (params.max_sentence_length, bert_config.max_position_embeddings)
         )
 
-    ner_config = NerConfig(vocab_size=len(vocab_list), num_tags=len(labels), max_seq_length=args.max_sentence_len)
-    ner_config.output_path = output_path
-    if not os.path.exists(ner_config.output_path):
-        os.makedirs(ner_config.output_path)
+    if not os.path.exists(params.output_path):
+        os.makedirs(params.output_path)
 
 
     with tf.Graph().as_default():
-        bert_input = bert_input_fn(os.path.join(args.output_path,'train.tfrecord'),
+        bert_input = bert_input_fn(os.path.join(params.output_path,'train.tfrecord'),
                                                      mode=tf.estimator.ModeKeys.TRAIN,
-                                                     batch_size= ner_config.batch_size,
-                                                     max_sentence_length=ner_config.max_seq_length
+                                                     batch_size= params.batch_size,
+                                                     max_sentence_length=params.max_sentence_length
                                                      )
-        if args.ner_type == "idcnn":
-            ner_config.filter_width = 3
-            ner_config.num_filter = ner_config.hidden_size
-            ner_config.repeat_times = 4
-        else:
-            ner_config.cell_type = 'lstm'
-            ner_config.bilstm_layer_nums = 2
-        ner_config.ner_type = args.ner_type
-        ner_config.embedding_size = bert_config.hidden_size
-        ner_config.bert_model_path = args.bert_model_path
-        model = BertNerModel(ner_config,bert_config)
+
+        model = BertNerModel(params,bert_config)
         model.train(bert_input['input_ids'],bert_input['input_mask'],bert_input['segment_ids'],bert_input['label_ids'])
-        model.make_pb_file(ner_config.output_path)
+        model.make_pb_file(params.output_path)
 
 
 if __name__ == '__main__':
@@ -166,9 +157,9 @@ if __name__ == '__main__':
     if not os.path.exists(output_path):
         os.mkdir(output_path)
 
-    if argument_dict.use_bert:
-        bert_make_tfrecord_files(argument_dict)
-        bert_train(argument_dict)
+    if params.use_bert:
+        bert_make_tfrecord_files(params)
+        bert_train(params)
     else:
         make_tfrecord_files(params)
         train(params)
