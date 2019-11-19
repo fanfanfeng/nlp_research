@@ -1,0 +1,20 @@
+Retrieval-based Chat主流的发展方向，进一步提高Context aware的answer ranking的效果。相比于之前一次性的交互，文章设计了一个interaction-block对每一个context中的句子都与response进行了多次交互（有点类似于MRC对于document和query进行反复重构的思路），并且在不同轮数、不同level的交互之上用RNN进行了轮数之间的抽象，更加强调对于context关系的（自动）推断。
+https://github.com/chongyangtao/IOI
+
+
+e2e_dialog_challenge
+https://github.com/xiul-msr/e2e_dialog_challenge
+
+对话机器人（聊天机器人）设计思考
+https://github.com/qhduan/ConversationalRobotDesign
+
+
+https://www.slideshare.net/QiHe2/kdd-2018-tutorial-end-toend-goaloriented-question-answering-systems-110817295
+
+ChatLearner
+https://github.com/bshao001/ChatLearner/tree/master/chatbot
+
+
+基于检索的聊天机器人的实现chatbot-retrieval
+https://blog.csdn.net/Irving_zhang/article/details/78788929
+https://github.com/Irvinglove/chatbot-retrieval
