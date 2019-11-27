@@ -1,6 +1,6 @@
 import argparse
 
-class params:
+def ArgumentParser():
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--vocab_size', default=20000, type=int)
@@ -26,5 +26,7 @@ class params:
     parser.add_argument('--dropout_rate', default=0, type=float)
     parser.add_argument('--smoothing', default=0.1, type=float,
                         help="label smoothing rate")
+    return  parser.parse_args()
+
 
 

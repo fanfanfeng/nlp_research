@@ -5,13 +5,14 @@ import numpy as np
 from  scipy.misc import imread
 import tensorflow as tf
 import math
-from tensorflow.contrib.layers import conv2d
+from tensorflow.contrib.layers import conv2d as conv2d_1
 from tensorflow.contrib.layers import conv2d_transpose
 from tensorflow.contrib.layers import fully_connected
 from tensorflow.contrib.layers import batch_norm
 from tensorflow.examples.tutorials.mnist import input_data
 from GAN.cartoon import config
 from GAN.cartoon import utils
+from GAN.cartoon.ops import lrelu,conv2d,deconv2d,conv_cond_concat,linear,concat
 import time
 
 
@@ -203,18 +204,8 @@ class DCGAN(object):
             h3 = conv2d_transpose(h2,self.c_dim,kernel_size=5,stride=2,scope='g_h3')
             return tf.nn.sigmoid(h3)
 
-    def load_mnist(self):
-        mnist_data_path = r'E:\tensorflow_data\mnist'
-        mnist = input_data.read_data_sets(mnist_data_path)
-
-
-        x = np.concatenate([mnist.train.images,mnist.validation.images,mnist.test.images],axis=0)
-        y = np.concatenate([mnist.train.labels,mnist.validation.labels,mnist.test.labels],axis=0)
-
-        y_vec = np.zeros((len(y),self.y_dim),dtype=np.float)
-        for i ,label in enumerate(y):
-            y_vec[i,y[i]] = 1.0
-        x = x.reshape((70000,28,28,1)).astype(np.float)
+    def load_data(self):
+        data_path = os.path.join(self.data_dir,self.dataset_name)
         return x,y_vec
 
     @property
@@ -242,112 +233,271 @@ class DCGAN(object):
             print("[*] Failed to find a checkpoint")
             return False
 
-    def generator(self,z,y=None):
-        with tf.variable_scope("generator") as scope:
-            if not self.y_dim:
-                s_h,s_w = self.output_height,self.output_width
-                s_h2,s_w2 = conv_out_size_same(s_h,2),conv_out_size_same(s_w,2)
-                s_h4,s_w4 = conv_out_size_same(s_h2,2),conv_out_size_same(s_w2,2)
-                s_h8,s_w8 = conv_out_size_same(s_h4,2),conv_out_size_same(s_w4,2)
-                s_h16,s_w16 = conv_out_size_same(s_h8,2),conv_out_size_same(s_w8,2)
-
-
-                self.z_linear = fully_connected(z,self.gf_dim*8*s_h16*s_w16,scope='g_h0_linear',activation_fn=None)
-
-                h0 = tf.reshape(self.z_linear,[-1,s_h16,s_w16,self.gf_dim * 8])
-                btn_h0 = self.g_bn0(h0)
-                h0 = tf.nn.relu(btn_h0)
-
-                h1 = conv2d_transpose(h0,self.gf_dim *4,kernel_size=5,stride=2,scope='g_h1')
-                btn_h1 = self.g_bn1(h1)
-                h1 = tf.nn.relu(btn_h1)
-
-                h2 = conv2d_transpose(h1,self.gf_dim *2,kernel_size=5,stride=2,scope='g_h2')
-                btn_h2 = self.g_bn2(h2)
-                h2 = tf.nn.relu(btn_h2)
-
-                h3 = conv2d_transpose(h2,self.gf_dim*1,kernel_size=5,stride=2,scope='g_h3')
-                btn_h3 = self.g_bn3(h3)
-                h3 = tf.nn.relu(btn_h3)
-
-                h4 = conv2d_transpose(h3,self.c_dim,kernel_size=5,stride=2,scope='g_h4')
-                return tf.nn.tanh(h4)
-            else:
-                s_h,s_w = self.output_height,self.output_width
-                s_h2,s_h4 = int(s_h/2),int(s_h/4)
-                s_w4,s_w4 = int(s_w/2),int(s_w/4)
-
-                yb = tf.reshape(y,[self.batch_size,1,1,self.y_dim])
-                z = tf.concat([z,y],1)
-
-                h0 = fully_connected(z,self.gfc_dim,activation_fn=None,scope='g_h0_linear')
-                btn_h0 = self.g_bn0(h0)
-                h0 = tf.nn.relu(btn_h0)
-                h0 = tf.concat([h0,y],1)
-
-                h1 = fully_connected(h0,self.gf_dim*2*s_h4*s_w4,activation_fn=None,scope='g_h1_linear')
-                btn_h1 = self.g_bn1(h1)
-                h1 = tf.nn.relu(btn_h1)
-                h1 = tf.reshape(h1,[self.batch_size,s_h4,s_w4,self.gf_dim *2])
-                h1 = utils.conv_cond_concat(h1,yb)
-
-                h2 = conv2d_transpose(h1,self.gf_dim*2,kernel_size=5,stride=2,scope='g_h2')
-                btn_h2 = self.d_bn2(h2)
-                h2 = tf.nn.relu(btn_h2)
-                h2 = utils.conv_cond_concat(h2,yb)
-
-                h3 = conv2d_transpose(h2,self.c_dim,kernel_size=5,stride=2,scope='g_h3')
-                return  tf.nn.sigmoid(h3)
-
-    def discriminator(self,image,y=None,reuse=False):
-        with tf.variable_scope('discriminator') as scope:
+    def discriminator(self, image, y=None, reuse=False):
+        with tf.variable_scope("discriminator") as scope:
             if reuse:
                 scope.reuse_variables()
 
             if not self.y_dim:
-                h0 = conv2d(image,self.df_dim,kernel_size=5,stride=2,scope='d_h0_conv')
-                h0 = tf.nn.leaky_relu(h0)
+                h0 = lrelu(conv2d(image, self.df_dim, name='d_h0_conv'))
+                h1 = lrelu(self.d_bn1(conv2d(h0, self.df_dim * 2, name='d_h1_conv')))
+                h2 = lrelu(self.d_bn2(conv2d(h1, self.df_dim * 4, name='d_h2_conv')))
+                h3 = lrelu(self.d_bn3(conv2d(h2, self.df_dim * 8, name='d_h3_conv')))
+                h4 = linear(tf.reshape(h3, [self.batch_size, -1]), 1, 'd_h4_lin')
 
-                h1 = conv2d(h0,self.df_dim*2,scope='d_h1_conv')
-                btn_h1 = batch_norm(h1,scope='d_btn_h1')
-                h1 = tf.nn.leaky_relu(btn_h1)
-
-                h2 = conv2d(h1,self.df_dim*4,scope='d_h2_conv')
-                btn_h2 = batch_norm(h2,scope='d_btn_h2')
-                h2 = tf.nn.leaky_relu(btn_h2)
-
-                h3 = conv2d(h2,self.df_dim*8,scope='d_h3_conv')
-                btn_h3 = batch_norm(h3,scope='d_btn_h3')
-                h3 = tf.nn.leaky_relu(btn_h3)
-
-                h3 = tf.reshape(h3,[self.batch_size,-1])
-                h4 = fully_connected(h3,1,activation_fn=None,scope='d_h4_linear')
-                return tf.nn.sigmoid(h4),h4
+                return tf.nn.sigmoid(h4), h4
             else:
-                yb = tf.reshape(y,[self.batch_size,1,1,self.y_dim])
-                x = utils.conv_cond_concat(image,yb)
+                yb = tf.reshape(y, [self.batch_size, 1, 1, self.y_dim])
+                x_shapes = image.get_shape()
+                y_shapes = yb.get_shape()
+                x = tf.concat([image, yb * tf.ones([x_shapes[0], x_shapes[1], x_shapes[2], y_shapes[3]])], 3)
 
-                h0 = conv2d(x,self.c_dim+self.y_dim,kernel_size=5,stride=2,scope='d_h0_conv')
+                h0 = conv2d_1(x, self.c_dim + self.y_dim, kernel_size=5, stride=2, scope='d_h0_conv',activation_fn=None)
                 h0 = tf.nn.leaky_relu(h0)
-                h0 = utils.conv_cond_concat(h0,yb)
+                x_shapes = h0.get_shape()
+                h0 = tf.concat([h0, yb * tf.ones([x_shapes[0], x_shapes[1], x_shapes[2], y_shapes[3]])], 3)
 
-                h1 = conv2d(h0,self.df_dim + self.y_dim,kernel_size=5,stride=2,scope='d_h1_conv')
-                btn_h1 = self.d_bn1(h1)
+                h1 = conv2d_1(h0, self.df_dim + self.y_dim, kernel_size=5, stride=2, scope='d_h1_conv',activation_fn=None)
+                btn_h1 = batch_norm(h1, scope='d_btn_h1')
                 h1 = tf.nn.leaky_relu(btn_h1)
-                h1 = tf.reshape(h1,[self.batch_size,-1])
-                h1 = tf.concat([h1,y],1)
+                h1 = tf.reshape(h1, [self.batch_size, -1])
+                h1 = tf.concat([h1, y], 1)
 
-                h2 = fully_connected(h1,self.dfc_dim,activation_fn=None,scope='d_h2_linear')
-                btn_h2 = self.d_bn2(h2)
+                h2 = fully_connected(h1, self.dfc_dim, activation_fn=None, scope='d_h2_linear')
+                btn_h2 = batch_norm(h2, scope='d_btn_h2')
                 h2 = tf.nn.leaky_relu(btn_h2)
-                h2 = tf.concat([h2,y],1)
+                h2 = tf.concat([h2, y], 1)
 
-                h3 = fully_connected(h2,1,activation_fn=None,scope='d_h3_linear')
+                h3 = fully_connected(h2, 1, activation_fn=None, scope='d_h3_linear')
 
-                return tf.nn.sigmoid(h3),h3
+                return tf.nn.sigmoid(h3), h3
+
+    def generator(self, z, y=None):
+        with tf.variable_scope("generator") as scope:
+            if not self.y_dim:
+                s_h, s_w = self.output_height, self.output_width
+                s_h2, s_w2 = conv_out_size_same(s_h, 2), conv_out_size_same(s_w, 2)
+                s_h4, s_w4 = conv_out_size_same(s_h2, 2), conv_out_size_same(s_w2, 2)
+                s_h8, s_w8 = conv_out_size_same(s_h4, 2), conv_out_size_same(s_w4, 2)
+                s_h16, s_w16 = conv_out_size_same(s_h8, 2), conv_out_size_same(s_w8, 2)
+
+                # project `z` and reshape
+                self.z_, self.h0_w, self.h0_b = linear(
+                    z, self.gf_dim * 8 * s_h16 * s_w16, 'g_h0_lin', with_w=True)
+
+                self.h0 = tf.reshape(
+                    self.z_, [-1, s_h16, s_w16, self.gf_dim * 8])
+                h0 = tf.nn.relu(self.g_bn0(self.h0))
+
+                self.h1, self.h1_w, self.h1_b = deconv2d(
+                    h0, [self.batch_size, s_h8, s_w8, self.gf_dim * 4], name='g_h1', with_w=True)
+                h1 = tf.nn.relu(self.g_bn1(self.h1))
+
+                h2, self.h2_w, self.h2_b = deconv2d(
+                    h1, [self.batch_size, s_h4, s_w4, self.gf_dim * 2], name='g_h2', with_w=True)
+                h2 = tf.nn.relu(self.g_bn2(h2))
+
+                h3, self.h3_w, self.h3_b = deconv2d(
+                    h2, [self.batch_size, s_h2, s_w2, self.gf_dim * 1], name='g_h3', with_w=True)
+                h3 = tf.nn.relu(self.g_bn3(h3))
+
+                h4, self.h4_w, self.h4_b = deconv2d(
+                    h3, [self.batch_size, s_h, s_w, self.c_dim], name='g_h4', with_w=True)
+
+                return tf.nn.tanh(h4)
+            else:
+                s_h, s_w = self.output_height, self.output_width
+                s_h2, s_h4 = int(s_h / 2), int(s_h / 4)
+                s_w4, s_w4 = int(s_w / 2), int(s_w / 4)
+
+                yb = tf.reshape(y, [self.batch_size, 1, 1, self.y_dim])
+                z = tf.concat([z, y], 1)
+
+                h0 = fully_connected(z, self.gfc_dim, activation_fn=None, scope='g_h0_linear')
+                btn_h0 = self.g_bn0(h0)
+                h0 = tf.nn.relu(btn_h0)
+                h0 = tf.concat([h0, y], 1)
+
+                h1 = fully_connected(h0, self.gf_dim * 2 * s_h4 * s_w4, activation_fn=None, scope='g_h1_linear')
+                btn_h1 = self.g_bn1(h1)
+                h1 = tf.nn.relu(btn_h1)
+                h1 = tf.reshape(h1, [self.batch_size, s_h4, s_w4, self.gf_dim * 2])
+                x_shapes = h1.get_shape()
+                y_shapes = yb.get_shape()
+                h1 = tf.concat([h1, yb * tf.ones([x_shapes[0], x_shapes[1], x_shapes[2], y_shapes[3]])], 3)
+
+                h2 = conv2d_transpose(h1, self.gf_dim * 2, kernel_size=5, stride=2, scope='g_h2', activation_fn=None)
+                btn_h2 = self.g_bn2(h2)
+                h2 = tf.nn.relu(btn_h2)
+                x_shapes = h2.get_shape()
+                h2 = tf.concat([h2, yb * tf.ones([x_shapes[0], x_shapes[1], x_shapes[2], y_shapes[3]])], 3)
+
+                h3 = conv2d_transpose(h2, self.c_dim, kernel_size=5, stride=2, scope='g_h3', activation_fn=None)
+                return tf.nn.sigmoid(h3)
 
 
     def train(self):
+        d_optim = tf.train.AdamOptimizer(config.learning_rate) \
+            .minimize(self.d_loss, var_list=self.d_vars)
+        g_optim = tf.train.AdamOptimizer(config.learning_rate) \
+            .minimize(self.g_loss, var_list=self.g_vars)
+        try:
+            tf.global_variables_initializer().run()
+        except:
+            tf.initialize_all_variables().run()
+
+
+
+        sample_z = np.random.uniform(-1, 1, size=(self.sample_num, self.z_dim))
+
+        if config.dataset == 'mnist':
+            sample_inputs = self.data_x[0:self.sample_num]
+            sample_labels = self.data_y[0:self.sample_num]
+        else:
+            sample_files = self.data[0:self.sample_num]
+            sample = [
+                get_image(sample_file,
+                          input_height=self.input_height,
+                          input_width=self.input_width,
+                          resize_height=self.output_height,
+                          resize_width=self.output_width,
+                          crop=self.crop,
+                          grayscale=self.grayscale) for sample_file in sample_files]
+            if (self.grayscale):
+                sample_inputs = np.array(sample).astype(np.float32)[:, :, :, None]
+            else:
+                sample_inputs = np.array(sample).astype(np.float32)
+
+        counter = 1
+        start_time = time.time()
+        could_load = self.restore_mode(self.checkpoint_dir,step=1)
+        if could_load:
+            counter = checkpoint_counter
+            print(" [*] Load SUCCESS")
+        else:
+            print(" [!] Load failed...")
+
+        for epoch in range(config.epoch):
+            if config.dataset == 'mnist':
+                batch_idxs = min(len(self.data_x), config.train_size) // config.batch_size
+            else:
+                self.data = glob(os.path.join(
+                    config.data_dir, config.dataset, self.input_fname_pattern))
+                np.random.shuffle(self.data)
+                batch_idxs = min(len(self.data), config.train_size) // config.batch_size
+
+            for idx in range(0, int(batch_idxs)):
+                if config.dataset == 'mnist':
+                    batch_images = self.data_x[idx * config.batch_size:(idx + 1) * config.batch_size]
+                    batch_labels = self.data_y[idx * config.batch_size:(idx + 1) * config.batch_size]
+                else:
+                    batch_files = self.data[idx * config.batch_size:(idx + 1) * config.batch_size]
+                    batch = [
+                        get_image(batch_file,
+                                  input_height=self.input_height,
+                                  input_width=self.input_width,
+                                  resize_height=self.output_height,
+                                  resize_width=self.output_width,
+                                  crop=self.crop,
+                                  grayscale=self.grayscale) for batch_file in batch_files]
+                    if self.grayscale:
+                        batch_images = np.array(batch).astype(np.float32)[:, :, :, None]
+                    else:
+                        batch_images = np.array(batch).astype(np.float32)
+
+                batch_z = np.random.uniform(-1, 1, [config.batch_size, self.z_dim]) \
+                    .astype(np.float32)
+
+                if config.dataset == 'mnist':
+                    # Update D network
+                    _ = self.sess.run([d_optim],
+                                                   feed_dict={
+                                                       self.inputs: batch_images,
+                                                       self.z: batch_z,
+                                                       self.y: batch_labels,
+                                                   })
+
+
+                    # Update G network
+                    _ = self.sess.run([g_optim],
+                                                   feed_dict={
+                                                       self.z: batch_z,
+                                                       self.y: batch_labels,
+                                                   })
+
+                    # Run g_optim twice to make sure that d_loss does not go to zero (different from paper)
+                    _ = self.sess.run([g_optim],
+                                                   feed_dict={self.z: batch_z, self.y: batch_labels})
+
+                    errD_fake = self.d_loss_fake.eval({
+                        self.z: batch_z,
+                        self.y: batch_labels
+                    })
+                    errD_real = self.d_loss_real.eval({
+                        self.inputs: batch_images,
+                        self.y: batch_labels
+                    })
+                    errG = self.g_loss.eval({
+                        self.z: batch_z,
+                        self.y: batch_labels
+                    })
+                else:
+                    # Update D network
+                    _, summary_str = self.sess.run([d_optim, self.d_sum],
+                                                   feed_dict={self.inputs: batch_images, self.z: batch_z})
+                    self.writer.add_summary(summary_str, counter)
+
+                    # Update G network
+                    _, summary_str = self.sess.run([g_optim, self.g_sum],
+                                                   feed_dict={self.z: batch_z})
+                    self.writer.add_summary(summary_str, counter)
+
+                    # Run g_optim twice to make sure that d_loss does not go to zero (different from paper)
+                    _, summary_str = self.sess.run([g_optim, self.g_sum],
+                                                   feed_dict={self.z: batch_z})
+                    self.writer.add_summary(summary_str, counter)
+
+                    errD_fake = self.d_loss_fake.eval({self.z: batch_z})
+                    errD_real = self.d_loss_real.eval({self.inputs: batch_images})
+                    errG = self.g_loss.eval({self.z: batch_z})
+
+                counter += 1
+                print("Epoch: [%2d/%2d] [%4d/%4d] time: %4.4f, d_loss: %.8f, g_loss: %.8f" \
+                      % (epoch, config.epoch, idx, batch_idxs,
+                         time.time() - start_time, errD_fake + errD_real, errG))
+
+                if np.mod(counter, 100) == 1:
+                    if config.dataset == 'mnist':
+                        samples, d_loss, g_loss = self.sess.run(
+                            [self.sampler, self.d_loss, self.g_loss],
+                            feed_dict={
+                                self.z: sample_z,
+                                self.inputs: sample_inputs,
+                                self.y: sample_labels,
+                            }
+                        )
+                        save_images(samples, image_manifold_size(samples.shape[0]),
+                                    './{}/train_{:02d}_{:04d}.png'.format(config.sample_dir, epoch, idx))
+                        print("[Sample] d_loss: %.8f, g_loss: %.8f" % (d_loss, g_loss))
+                    else:
+                        try:
+                            samples, d_loss, g_loss = self.sess.run(
+                                [self.sampler, self.d_loss, self.g_loss],
+                                feed_dict={
+                                    self.z: sample_z,
+                                    self.inputs: sample_inputs,
+                                },
+                            )
+                            save_images(samples, image_manifold_size(samples.shape[0]),
+                                        './{}/train_{:02d}_{:04d}.png'.format(config.sample_dir, epoch, idx))
+                            print("[Sample] d_loss: %.8f, g_loss: %.8f" % (d_loss, g_loss))
+                        except:
+                            print("one pic error!...")
+
+                if np.mod(counter, 500) == 2:
+                    self.save_mode(config.checkpoint_dir, counter)
+
+    def train1(self):
         d_optimizer = tf.train.AdamOptimizer(config.learning_rate).minimize(self.d_loss,var_list=self.d_vars)
         g_optimizer = tf.train.AdamOptimizer(config.learning_rate).minimize(self.g_loss,var_list=self.g_vars)
 
@@ -398,11 +548,11 @@ class DCGAN(object):
                     self.summary_writer.add_summary(summary_str,count)
 
 
-                   # _,summary_str = self.sess.run([g_optimizer,self.g_summary_run],feed_dict={
-                    #    self.z:batch_z,
-                    #    self.y:batch_labels
-                    #})
-                    #self.summary_writer.add_summary(summary_str,count)
+                    _,summary_str = self.sess.run([g_optimizer,self.g_summary_run],feed_dict={
+                        self.z:batch_z,
+                        self.y:batch_labels
+                    })
+                    self.summary_writer.add_summary(summary_str,count)
 
                     _, summary_str = self.sess.run([g_optimizer, self.g_summary_run], feed_dict={
                         self.z: batch_z,

@@ -1,71 +1,86 @@
-#-*- coding:utf-8 -*-
+# create by fanfan on 2017/10/11 0011
+
 import tensorflow as tf
-import data_ch
-import sys
-import model as ml
+from dialog_system.transform_QAbot import data_process
+from dialog_system.transform_QAbot import data_utils
+import jieba
+import numpy as np
+from collections import OrderedDict
+import  time
 
-from configs import DEFINES
-	
+class Meta_Load():
+    def __init__(self):
+        self.sess = tf.Session()
+        self.load_model(self.sess)
+        self._init__tensor()
+        data_processer = data_process.NormalData("", output_path="output/")
+        self.vocab, self.vocab_list =  data_processer.load_vocab_and_intent()
+        self.max_sentence_length = 50
+
+
+
+
+    def _init__tensor(self):
+        self.input = self.sess.graph.get_operation_by_name('input').outputs[0]
+        self.target = self.sess.graph.get_operation_by_name('target').outputs[0]
+
+        self.decoder_tensor = self.sess.graph.get_operation_by_name("predict").outputs[0]
+
+    def predict(self,text):
+        input_ids_sentence = data_utils.pad_sentence(text.split(" "), self.max_sentence_length,self.vocab)
+        output_ids_sentence = data_utils.pad_sentence("",self.max_sentence_length,self.vocab)
+
+
+        answer = ""
+
+        for i in range(self.max_sentence_length):
+            if  1 == 0:
+                output_ids_sentence = data_utils.pad_sentence(answer,self.max_sentence_length,self.vocab)
+            feed_dict = {}
+            feed_dict[self.input] = np.array([input_ids_sentence])
+            feed_dict[self.target] = np.array([output_ids_sentence])
+
+            predicts = self.sess.run(self.decoder_tensor, feed_dict)
+            an1 = answer
+            answer = self.pred_next_string(predicts[0])
+            print("answer:" + " ".join(answer))
+            if answer == an1:
+                break
+        return answer
+
+
+
+
+    def load_model(self,sess):
+        with tf.gfile.FastGFile("output/transform.pb",'rb') as f:
+            graph_def = tf.GraphDef()
+            graph_def.ParseFromString(f.read())
+            with sess.graph.as_default():
+                tf.import_graph_def(graph_def,name="")
+
+
+    def pred_next_string(self,token_list):
+        answer = []
+        for word_id in token_list:
+            if word_id < 3:
+                break
+            else:
+                answer.append(self.vocab_list[word_id])
+        return answer
+
+def predict():
+
+    model_obj = Meta_Load()
+    while True:
+        text = input("请输入句子:")
+        print(model_obj.predict(text))
+
+
+
+
+
 if __name__ == '__main__':
-    tf.logging.set_verbosity(tf.logging.INFO)
-    '''
-    arg_length = len(sys.argv)
-    
-    if(arg_length < 2):
-        raise Exception("Don't call us. We'll call you")
-    '''
-  
-    
-    # 데이터를 통한 사전 구성 한다.
-    char2idx,  idx2char, vocabulary_length = data_ch.load_vocabulary()
+    predict()
+    #for i in range(10):
+    #    model_obj = Meta_Load()
 
-    # 테스트용 데이터 만드는 부분이다.
-    # 인코딩 부분 만든다.
-    '''
-    print(sys.argv)
-    input = ""
-    for i in sys.argv[1:]:
-        input += i 
-        input += " "
-    '''
-    question = input('q:')    
-    #print('Question: ',input)
-    predic_input_enc, predic_input_enc_length = data_ch.enc_processing([question], char2idx)
-    # 학습 과정이 아니므로 디코딩 입력은 
-    # 존재하지 않는다.(구조를 맞추기 위해 넣는다.)
-    predic_output_dec, predic_output_dec_length = data_ch.dec_output_processing([""], char2idx)
-    # 학습 과정이 아니므로 디코딩 출력 부분도 
-    # 존재하지 않는다.(구조를 맞추기 위해 넣는다.)
-    predic_target_dec = data_ch.dec_target_processing([""], char2idx)
-
-	# 에스티메이터 구성한다.
-    classifier = tf.estimator.Estimator(
-            model_fn=ml.Model, # 모델 등록한다.
-            model_dir=DEFINES.check_point_path, # 체크포인트 위치 등록한다.
-            params={ # 모델 쪽으로 파라메터 전달한다.
-                'hidden_size': DEFINES.hidden_size, # 가중치 크기 설정한다.
-                'learning_rate': DEFINES.learning_rate, # 학습율 설정한다. 
-                'vocabulary_length': vocabulary_length, # 딕셔너리 크기를 설정한다.
-                'embedding_size': DEFINES.embedding_size, # 임베딩 크기를 설정한다.
-                'max_sequence_length': DEFINES.max_sequence_length,
-                
-            })
-    answer=''
-    for i in range(DEFINES.max_sequence_length):
-        if i > 0:
-           predic_output_dec, predic_output_decLength = data_ch.dec_output_processing([answer], char2idx)
-           predic_target_dec = data_ch.dec_target_processing([answer], char2idx)
-        # 예측을 하는 부분이다.
-        predictions = classifier.predict(input_fn=lambda: data_ch.eval_input_fn(predic_input_enc, predic_output_dec, predic_target_dec, 1))
-        an1=answer
-        answer = data_ch.pred_next_string(predictions, idx2char)
-        print("answer: ", answer)
-        
-        if(len(answer)==len(an1)):
-             break
-            
-        
-    # 예측한 값을 인지 할 수 있도록
-    # 텍스트로 변경하는 부분이다.
-    print('Question: ',question)
-    

@@ -3,7 +3,7 @@ from . import util
 from .Segmentation import Segmentation
 
 class TextRank4Keyword(object):
-    def __init__(self,stop_words_file=None,
+    def __init__(self, stop_words_file=None,
                  allow_speech_tags=util.allow_speech_tags,
                  delimiters = util.sentence_delimiters):
         """
@@ -79,7 +79,7 @@ class TextRank4Keyword(object):
         else:
             _edge_source = result['words_no_stop_words']
 
-        self.keywords = util.sort_words(_vertex_source,_edge_source,window=window,pagerank_config=pagerandk_config)
+        self.keywords = util.sort_words(_vertex_source, _edge_source, window=window, pagerank_config=pagerandk_config)
 
 
 

@@ -1,10 +1,12 @@
 # create by fanfan on 2019/3/7 0007
 
-import jieba.posseg as pseg
 import codecs
 import os
 
+import jieba.posseg as pseg
+
 from . import util
+
 
 def get_default_stop_words_file():
     d = os.path.dirname(os.path.realpath(__file__))
@@ -12,7 +14,7 @@ def get_default_stop_words_file():
 
 class WordSegmengtation(object):
     """ 分词 """
-    def __init__(self,stop_words_file=None,allow_speech_tags=util.allow_speech_tags):
+    def __init__(self, stop_words_file=None, allow_speech_tags=util.allow_speech_tags):
         """
                 Keyword arguments:
                 stop_words_file    -- 保存停止词的文件路径，utf8编码，每行一个停止词。若不是str类型，则使用默认的停止词
@@ -71,7 +73,7 @@ class WordSegmengtation(object):
 
 class SentenceSegmentation(object):
     """ 分句 """
-    def __init__(self,delimiters=util.sentence_delimiters):
+    def __init__(self, delimiters=util.sentence_delimiters):
         """
                 Keyword arguments:
                 delimiters -- 可迭代对象，用来拆分句子
@@ -92,7 +94,7 @@ class SentenceSegmentation(object):
 
 
 class Segmentation(object):
-    def __init__(self,stop_words_file=None,
+    def __init__(self, stop_words_file=None,
                  allow_speech_tags=util.allow_speech_tags,
                  delimiters =util.sentence_delimiters):
         """

@@ -4,7 +4,7 @@ from . import util
 from .Segmentation import Segmentation
 
 class TextRank4Sentence(object):
-    def __init__(self,stop_words_file=None,
+    def __init__(self, stop_words_file=None,
                  allow_speech_tags = util.allow_speech_tags,
                  delimiters=util.sentence_delimiters):
         """
@@ -30,7 +30,7 @@ class TextRank4Sentence(object):
         self.key_sentences = None
 
 
-    def analyze(self,text,lower=False,
+    def analyze(self, text, lower=False,
                 source = 'no_stop_words',
                 sim_func = util.get_similarity,
                 pagerank_config={'alpha':0.85,}):

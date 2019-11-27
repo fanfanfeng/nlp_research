@@ -131,4 +131,21 @@ def input_fn(input_file, batch_size,max_sentence_length, mode=tf.estimator.ModeK
     return input, decoder_inpout,decoder_output
 
 
+class BatchManager():
+    def __init__(self,data,batch_size):
+        self.data = data
+        self.batch_size = batch_size
 
+
+    def __iter__(self):
+        number = len(self.data)//self.batch_size
+        for i in range(number):
+            yield [{"1":self.data[i*self.batch_size:(i+1)*self.batch_size]}]
+
+
+if __name__ == '__main__':
+
+    a = [ 1,1,1,1,1,1,1,1]
+    b = BatchManager(a,1)
+    for i ,j in enumerate(b):
+        print(j)

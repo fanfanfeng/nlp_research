@@ -24,7 +24,7 @@ def argument_parser():
     parser.add_argument('--output_path',type=str,default='output/',help="中间文件生成目录")
     parser.add_argument('--origin_data', type=str, default=None, help="原始数据地址")
     parser.add_argument('--data_type', type=str, default="default", help="原始数据格式，，目前支持默认的，还有rasa格式")
-    parser.add_argument('--ner_type', type=str, default="bilstm", help="神经网络类型：idcnn or bilstm" )
+    parser.add_argument('--ner_type', type=str, default="idcnn", help="神经网络类型：idcnn or bilstm" )
 
     parser.add_argument('--device_map', type=str, default="0", help="gpu 的设备id")
     parser.add_argument('--use_bert',action='store_true',help='是否使用bert')

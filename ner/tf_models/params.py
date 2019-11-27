@@ -64,7 +64,7 @@ class Params:
     embedding_size = 256
     initializer_range = 0.02
 
-    cell_type = 'gru'      # bilstm 参数
+    cell_type = 'lstm'      # bilstm 参数
     bilstm_layer_nums = 2  # bilstm 参数
 
     filter_width = 3 #idcnn参数

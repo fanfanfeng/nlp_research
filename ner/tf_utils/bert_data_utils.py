@@ -215,14 +215,6 @@ def input_fn(input_file,batch_size,max_sentence_length,mode=tf.estimator.ModeKey
         tf_record_reader = tf_record_reader.shuffle(buffer_size=batch_size*1000)
     dataset = tf_record_reader.apply(tf.data.experimental.map_and_batch(lambda record:_decode_record(record),
                                                    batch_size,num_parallel_calls=8))
-    #if mode == tf.estimator.ModeKeys.TRAIN:
-    #    print(mode)
-    #    d = d.repeat()
-    #    d = d.shuffle(buffer_size=batch_size*1000)
-    #if mode == tf.estimator.ModeKeys.TRAIN:
-    #    dataset = tf_record_reader.map(_decode_record).repeat(30).shuffle(batch_size*10000).batch(batch_size)
-    #else:
-    #    dataset = tf_record_reader.map(_decode_record).batch(batch_size)
     iterator = dataset.make_one_shot_iterator()
     example_item = iterator.get_next()
     return example_item

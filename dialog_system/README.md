@@ -1,3 +1,6 @@
+Seq2seq
+参考github:https://github.com/IsaacChanghau/SequenceToSequence
+
 Memory Networks
 参考github:https://github.com/domluna/memn2n
 讲解：https://blog.csdn.net/u011274209/article/details/53384232
@@ -16,3 +19,8 @@ Dynamic Memory Networks
 Hierarchical Neural Network Models
 参考github: https://github.com/shuuki4/HRED-tensorflow
 讲解：https://blog.csdn.net/liuchonge/article/details/79237611
+
+
+Sequential Matching Network
+参考github: https://github.com/MarkWuNLP/MultiTurnResponseSelection
+讲解 ：https://zhuanlan.zhihu.com/p/65062025

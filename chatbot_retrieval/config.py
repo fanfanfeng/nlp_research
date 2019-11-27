@@ -2,23 +2,28 @@
 
 import sys
 import os
-import platform
 if 'win32' in sys.platform:
-    ProjectDir = r"E:\git-project\nlp_research\chatbot-retrieval"
+    ProjectDir = r"E:\git-project\nlp_research\chatbot_retrieval"
 else:
-    ProjectDir = r'/data/python_project/nlp_research/chatbot-retrieval'
+    ProjectDir = r'/data/python_project/nlp_research/chatbot_retrieval'
 
 
-
-filter_num = 5
-max_vocab_size = 90000  #词库大小
-vocabulary_path = os.path.join(ProjectDir,'data/vocab_{}.txt'.format(max_vocab_size))
-embedding_size = 200
+# 语料处理设置参数
+min_word_frequency = 5
 max_seq_len = 160
+
+DATA_PATH = os.path.join(ProjectDir,"data")
+vocabulary_path = os.path.join(DATA_PATH,'vocab_processor.txt')
+vocabulary_path_bin = os.path.join(DATA_PATH,"vocab_processor.bin")
+TRAIN_PATH = os.path.join(DATA_PATH, "train.csv")
+VALIDATION_PATH = os.path.join(DATA_PATH, "valid.csv")
+TEST_PATH = os.path.join(DATA_PATH, "test.csv")
+
 
 
 
 # 神经网络设置参数
+embedding_size = 200
 hiddenSize = 256
 dropout = 0.5
 layer_num = 2

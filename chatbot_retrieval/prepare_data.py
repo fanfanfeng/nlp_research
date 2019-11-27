@@ -3,35 +3,22 @@ import csv
 import itertools
 import functools
 import tensorflow as tf
+from tensorflow.contrib.learn.python.learn.preprocessing import VocabularyProcessor
+from chatbot_retrieval import config
+from utils.vocabprocessor import CategoricalVocabularyMy
 
-
-tf.flags.DEFINE_integer(
-  "min_word_frequency", 5, "Minimum frequency of words in the vocabulary")
-
-tf.flags.DEFINE_integer("max_sentence_len", 160, "Maximum Sentence Length")
-
-tf.flags.DEFINE_string(
-  "input_dir", os.path.abspath("./data"),
-  "Input directory containing original CSV data files (default = './data')")
-
-tf.flags.DEFINE_string(
-  "output_dir", os.path.abspath("./data"),
-  "Output directory for TFrEcord files (default = './data')")
-
-FLAGS = tf.flags.FLAGS
-
-TRAIN_PATH = os.path.join(FLAGS.input_dir, "train.csv")
-VALIDATION_PATH = os.path.join(FLAGS.input_dir, "valid.csv")
-TEST_PATH = os.path.join(FLAGS.input_dir, "test.csv")
 
 def tokenizer_fn(iterator):
+  '''
+  分词方法，英文的话直接split,中文的话可以调用jieba或者自己定义分词方法
+  '''
   return (x.split(" ") for x in iterator)
 
 def create_csv_iter(filename):
   """
-  Returns an iterator over a CSV file. Skips the header.
+  读取csv文件，跳过第一行，返回一个迭代器读
   """
-  with open(filename) as csvfile:
+  with open(filename,encoding='utf-8') as csvfile:
     reader = csv.reader(csvfile)
     # Skip the header
     next(reader)
@@ -41,13 +28,14 @@ def create_csv_iter(filename):
 
 def create_vocab(input_iter, min_frequency):
   """
-  Creates and returns a VocabularyProcessor object with the vocabulary
-  for the input iterator.
+  用tf自带的tensorflow.contrib.learn.python.learn.preprocessing类处理句子
   """
-  vocab_processor = tf.contrib.learn.preprocessing.VocabularyProcessor(
-      FLAGS.max_sentence_len,
+  vocab_processor = VocabularyProcessor(
+      config.max_seq_len,
       min_frequency=min_frequency,
-      tokenizer_fn=tokenizer_fn)
+      tokenizer_fn=tokenizer_fn,
+      vocabulary = CategoricalVocabularyMy(),#扩展词库，默认前面4个词是预设的
+  )
   vocab_processor.fit(input_iter)
   return vocab_processor
 
@@ -142,7 +130,7 @@ def write_vocabulary(vocab_processor, outfile):
   Writes the vocabulary to a file, one word per line.
   """
   vocab_size = len(vocab_processor.vocabulary_)
-  with open(outfile, "w") as vocabfile:
+  with open(outfile, "w",encoding='utf-8') as vocabfile:
     for id in range(vocab_size):
       word =  vocab_processor.vocabulary_._reverse_mapping[id]
       vocabfile.write(word + "\n")
@@ -150,18 +138,19 @@ def write_vocabulary(vocab_processor, outfile):
 
 
 if __name__ == "__main__":
-  print("Creating vocabulary...")
-  input_iter = create_csv_iter(TRAIN_PATH)
-  input_iter = (x[0] + " " + x[1] for x in input_iter)
-  vocab = create_vocab(input_iter, min_frequency=FLAGS.min_word_frequency)
-  print("Total vocabulary size: {}".format(len(vocab.vocabulary_)))
+  if not os.path.exists(config.vocabulary_path):
+    print("创建词库...")
+    input_iter = create_csv_iter(config.TRAIN_PATH)
+    input_iter = (x[0] + " " + x[1] for x in input_iter)
+    vocab = create_vocab(input_iter, min_frequency=config.min_word_frequency)
+    print("词库大小: {}".format(len(vocab.vocabulary_)))
+    # Create vocabulary.txt file
+    write_vocabulary(vocab, config.vocabulary_path)
+    # 保存词汇库，后面直接restore
+    vocab.save(config.vocabulary_path_bin)
+  else:
+    vocab = VocabularyProcessor.restore(config.vocabulary_path_bin)
 
-  # Create vocabulary.txt file
-  write_vocabulary(
-    vocab, os.path.join(FLAGS.output_dir, "vocabulary.txt"))
-
-  # Save vocab processor
-  vocab.save(os.path.join(FLAGS.output_dir, "vocab_processor.bin"))
 
   # Create validation.tfrecords
   create_tfrecords_file(

@@ -5,10 +5,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pickle
 
-mnist_data_path = r'E:\tensorflow_data\MNIST_data'
+mnist_data_path = r'E:\tensorflow_data\mnist'
 mnist = input_data.read_data_sets(mnist_data_path)
 
 img = mnist.train.images[50]
+label = mnist.train.labels[50]
 plt.imshow(img.reshape((28,28)),cmap='Greys_r')
 plt.show()
 

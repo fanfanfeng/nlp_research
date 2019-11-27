@@ -1,5 +1,17 @@
 # create by fanfan on 2019/2/25 0025
 
+def start_server():
+    from bert_base.server import BertServer
+    from bert_base.server.helper import get_run_args
+
+    args = get_run_args()
+    server = BertServer(args)
+    server.start()
+    server.join()
+
+def start_client():
+    pass
+
 def train_ner():
     import os
     from bert_base.train.train_helper import get_args_parser
@@ -15,4 +27,4 @@ def train_ner():
 
 
 if __name__ == '__main__':
-    train_ner()
+    start_server()
