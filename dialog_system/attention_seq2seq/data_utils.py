@@ -10,12 +10,13 @@ _PAD = '_PAD'
 _GO = '_GO'
 _EOS = "_EOS"
 _UNK = "_UNK"
-_START_VOCAB = [_PAD,_GO,_EOS,_UNK]
+_START_VOCAB = [_PAD,_GO,_UNK,_EOS]
 
 PAD_ID = 0
 GO_ID = 1
-EOS_ID = 2
-UNK_ID = 3
+UNK_ID = 2
+EOS_ID = 3
+
 
 def find_and_validate(line):
     return ''.join(re.findall(r'[\u4e00-\u9fff]+', line))
@@ -27,10 +28,10 @@ def pad_sentence(sentence, max_sentence,vocabulary,decoder=False):
     参数：
     - sentence
     '''
-    UNK_ID = vocabulary.get('<UNK>')
-    PAD_ID = vocabulary.get('_PAD')
-    START_ID = vocabulary.get("_GO")
-    END_ID = vocabulary.get("_EOS")
+    UNK_ID = vocabulary.get('<UNK>',2)
+    PAD_ID = vocabulary.get('_PAD',0)
+    START_ID = vocabulary.get("_GO",1)
+    END_ID = vocabulary.get("_EOS",0)
     sentence_batch_ids = [vocabulary.get(w, UNK_ID) for w in sentence]
     if len(sentence_batch_ids) > max_sentence - 1 :
         if decoder:

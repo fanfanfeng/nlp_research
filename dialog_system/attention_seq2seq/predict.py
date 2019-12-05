@@ -8,8 +8,9 @@ import os
 import tensorflow as tf
 import jieba
 import numpy as np
-
-
+from dialog_system.attention_seq2seq.utils_other.data_utils import load_data
+current_path = os.path.dirname(os.path.abspath(__file__))
+jieba.load_userdict(os.path.join(current_path,"user_dict/user_dict.txt"))
 
 
 class Meta_Load():
@@ -18,7 +19,17 @@ class Meta_Load():
         self.params = params
         self.load_model(self.sess)
         self._init__tensor()
-        self.vocab, self.vocab_list = self.load_vocab_and_intent()
+        self.vocab, self.vocab_list = self.load_vocab()#self.load_vocab_and_intent()
+
+    def load_vocab(self):
+        current_path = os.path.dirname(os.path.abspath(__file__))
+        vocabulary = os.path.join(current_path, 'data/vocabulary.json')
+        dict_data = load_data(vocabulary)
+        target_dict = dict_data["target_dict"]
+        del dict_data
+        vocab_list = sorted(target_dict,key=target_dict.get)
+        return target_dict,vocab_list
+
 
     def load_vocab_and_intent(self):
         vocab_list = []

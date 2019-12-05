@@ -3,8 +3,13 @@ import sys
 import os
 import random
 import re
+from utils.langconv import Traditional2Simplified
 def find_and_validate(line):
     return ''.join(re.findall(r'[\u4e00-\u9fff]+', line))
+
+import jieba
+current_path = os.path.dirname(os.path.abspath(__file__))
+jieba.load_userdict(os.path.join(current_path,"user_dict/user_dict.txt"))
 
 def remove_punc(line):
     line = line.replace('。','')
@@ -25,8 +30,8 @@ def remove_punc(line):
     return line
 
 class NormalData():
-    def __init__(self,folder,min_freq=3,output_path=None,max_vocab_size = 0):
-        self._START_VOCAB = ['_PAD', '_GO', "_EOS", '<UNK>']
+    def __init__(self,folder,min_freq=2,output_path=None,max_vocab_size = 0):
+        self._START_VOCAB = ['_PAD', '_GO', '<UNK>',"_EOS"]
         self.folder_path = folder
         self.min_freq = min_freq
         self.output_path = output_path
@@ -42,8 +47,12 @@ class NormalData():
                     source,target = source_and_target
                     source = remove_punc(source)
                     target = remove_punc(target)
-                    source = [find_and_validate(word) for word in source.strip().split(" ") if find_and_validate(word) != ""]
-                    target = [find_and_validate(word) for word in target.strip().split(" ") if find_and_validate(word) != ""]
+
+                    source = Traditional2Simplified(source)
+                    target = Traditional2Simplified(target)
+
+                    source = [find_and_validate(word) for word in jieba.cut(source) if find_and_validate(word) != ""]
+                    target = [find_and_validate(word) for word in jieba.cut(target) if find_and_validate(word) != ""]
                     if source == [] or target == []:
                         continue
                     yield source,target
@@ -64,9 +73,15 @@ class NormalData():
                 if len(source_and_target) != 2:
                     continue
                 source, target = source_and_target
-                source = [find_and_validate(word) for word in source.strip().split(" ") if
+
+                source = remove_punc(source)
+                target = remove_punc(target)
+
+                source = Traditional2Simplified(source)
+                target = Traditional2Simplified(target)
+                source = [find_and_validate(word) for word in jieba.cut(source) if
                           find_and_validate(word) != ""]
-                target = [find_and_validate(word) for word in target.strip().split(" ") if
+                target = [find_and_validate(word) for word in jieba.cut(target) if
                           find_and_validate(word) != ""]
                 yield source,target
 

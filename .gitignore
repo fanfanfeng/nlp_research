@@ -14,3 +14,6 @@ logs/
 model_uncase/
 result_classify/
 output/
+SNLI/
+log/
+tensorboard/

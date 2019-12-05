@@ -1,68 +1,65 @@
-# create by fanfan on 2018/7/17 0017
+# create by fanfan on 2019/11/14 0014
 import tensorflow as tf
-from tensorflow.contrib import rnn
+from tensorflow.contrib.rnn import GRUCell,LSTMCell,DropoutWrapper,ResidualWrapper,MultiRNNCell
+def create_single_cell(num_units,keep_prob,use_residual,cell_type='lstm'):
+    if cell_type == 'lstm':
+        cell = LSTMCell(num_units)
+    else:
+        cell = GRUCell(num_units)
 
+    cell = DropoutWrapper(cell, output_keep_prob=keep_prob)
 
-
-def build_single_cell(hidden_units,keep_prob,use_residual):
-    cell = rnn.LSTMCell(hidden_units)
-    cell = tf.contrib.rnn.DropoutWrapper(cell=cell,input_keep_prob=keep_prob)
     if use_residual:
-        cell = rnn.ResidualWrapper(cell)
+        cell = ResidualWrapper(cell)
     return cell
 
-def build_cell_list(hidden_units,num_layers,num_residual_layers,keep_prob,use_residual):
-    cell_list = []
-    for i in range(num_layers):
-        single_cell = build_single_cell(hidden_units,keep_prob,(i >= num_layers - num_residual_layers and use_residual))
-        cell_list.append(single_cell)
 
-    if len(cell_list) == 1:  # Single layer.
+def create_cell_list(num_layers,num_units,keep_prob,use_residual,cell_type,return_list=False):
+    cell_list = [create_single_cell(num_units,keep_prob,use_residual,cell_type) for _ in range(num_layers)]
+
+    if num_layers == 1:
         return cell_list[0]
-    else:  # Multi layers
-        return tf.contrib.rnn.MultiRNNCell(cell_list)
+    else:
+        if return_list:
+            return cell_list
+        else:
+            return MultiRNNCell(cell_list)
 
 
-def build_bilstm_encode(encoder_inputs_embedded,encoder_inputs_length,layer_num,hidden_units,keep_prob,use_residual):
-    with tf.variable_scope('encoder'):
-        encoder_layer = int(layer_num)
-        encoder_layer_residual = int(layer_num) -1
 
-        # building encoder_cell
-        encoder_cell_fw = build_cell_list(hidden_units,encoder_layer,encoder_layer_residual,keep_prob,use_residual)
-        encoder_cell_bw = build_cell_list(hidden_units,encoder_layer,encoder_layer_residual,keep_prob,use_residual)
-        #将输入的句子转化为上下文向量
-        # encoder_outputs: [batch_size, max_time_step, cell_output_size]
-        # encoder_state: [batch_size, cell_output_size]
-        encoder_outputs,encoder_last_state = tf.nn.bidirectional_dynamic_rnn(
-            encoder_cell_fw,
-            encoder_cell_bw,
-            inputs=encoder_inputs_embedded,
-            sequence_length=encoder_inputs_length,
-            dtype=tf.float32,
-        )
-        # 由于是双向lstm，合并输入
-        encoder_outputs = tf.concat(encoder_outputs, 2)
+def create_encoder(source_emb,enc_seq_len,num_units,use_residual,keep_prob,num_layers,cell_type='lstm'):
+    '''
+    :param source_emb: 经过embedding处理的source向量
+    :param enc_seq_len: source的长度
+    :param num_units: lstm的size
+    :param use_residual: 是否使用残差
+    :param keep_prob: 保留概率，1 - dropout
+    :param num_layers: rnn的层数
+    :param cell_type: rnn的类型
+    :return: output,output_states
+    '''
 
-        # 合并输入的states
-        encoder_states = []
-        for i in range(encoder_layer):
-            if isinstance(encoder_last_state[0][i], tf.contrib.rnn.LSTMStateTuple):
-                encoder_state_c = tf.concat(values=(encoder_last_state[0][i].c, encoder_last_state[1][i].c), axis=1,
-                                            name="encoder_fw_state_c")
-                encoder_state_h = tf.concat(values=(encoder_last_state[0][i].h, encoder_last_state[1][i].h), axis=1,
-                                            name="encoder_fw_state_h")
-                encoder_state = tf.contrib.rnn.LSTMStateTuple(c=encoder_state_c, h=encoder_state_h)
-            elif isinstance(encoder_last_state[0][i], tf.Tensor):
-                encoder_state = tf.concat(values=(encoder_last_state[0][i], encoder_last_state[1][i]), axis=1,
-                                          name='bidirectional_concat')
-            encoder_states.append(encoder_state)
-        encoder_last_state = tuple(encoder_states)
 
-        #encoder_state = []
-        #for layer_id in range(encoder_layer):
-        #    encoder_state.append(encoder_last_state[0][layer_id])  # forward
-        #    encoder_state.append(encoder_last_state[1][layer_id])  # backward
-        #encoder_state = tuple(encoder_state)
-
-    return encoder_outputs,encoder_last_state
+    enc_cells_fw = create_cell_list(num_layers,num_units,keep_prob,use_residual,cell_type)
+    enc_cells_bw = create_cell_list(num_layers,num_units,keep_prob,use_residual,cell_type)
+    enc_outputs, enc_states = tf.nn.bidirectional_dynamic_rnn(enc_cells_fw, enc_cells_bw, source_emb,
+                                                              sequence_length=enc_seq_len,
+                                                              dtype=tf.float32)
+    enc_outputs = tf.concat(enc_outputs, 2)
+    # 合并输入的states
+    encoder_states = []
+    for i in range(num_layers):
+        if isinstance(enc_states[0][i], tf.contrib.rnn.LSTMStateTuple):
+            encoder_state_c = tf.concat(values=(enc_states[0][i].c, enc_states[1][i].c), axis=1,
+                                        name="encoder_fw_state_c")
+            encoder_state_h = tf.concat(values=(enc_states[0][i].h, enc_states[1][i].h), axis=1,
+                                        name="encoder_fw_state_h")
+            encoder_state = tf.contrib.rnn.LSTMStateTuple(c=encoder_state_c, h=encoder_state_h)
+        elif isinstance(enc_states[0][i], tf.Tensor):
+            encoder_state = tf.concat(values=(enc_states[0][i], enc_states[1][i]), axis=1,
+                                      name='bidirectional_concat')
+        else:
+            raise TypeError("cell type error in encoder cell")
+        encoder_states.append(encoder_state)
+    enc_states = tuple(encoder_states)
+    return enc_outputs,enc_states

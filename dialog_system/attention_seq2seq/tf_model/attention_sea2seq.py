@@ -2,8 +2,8 @@
 import math
 import os
 import tensorflow as tf
-from dialog_system.attention_seq2seq.tf_model.encoder import build_bilstm_encode
-from dialog_system.attention_seq2seq.tf_model.decoder import build_decoder_cell
+from dialog_system.attention_seq2seq.tf_model.encoder import create_encoder
+from dialog_system.attention_seq2seq.tf_model.decoder import create_decoder_cell
 from dialog_system.attention_seq2seq import data_utils
 from tensorflow.contrib import  seq2seq
 from tensorflow.python.layers.core import Dense
@@ -36,16 +36,17 @@ class AttentionSeq():
             encoder_inputs_embeded = tf.nn.embedding_lookup(embeddings_matrix,input)
             # Input projection layer to feed embedded inputs to the cell
             encoder_inputs_embeded = tf.layers.dense(encoder_inputs_embeded,self.params.hidden_units)
-            encoder_outputs,encoder_last_states = build_bilstm_encode(encoder_inputs_embeded,
-                                                                      encoder_inputs_length,
-                                                                      self.params.depth,
-                                                                      self.params.hidden_units,
-                                                                      keep_prob,
-                                                                      self.params.use_residual)
+            encoder_outputs,encoder_last_states = create_encoder( source_emb= encoder_inputs_embeded,
+                                                                  enc_seq_len =encoder_inputs_length,
+                                                                  num_layers=self.params.depth,
+                                                                  num_units=self.params.hidden_units,
+                                                                  keep_prob=keep_prob,
+                                                                  use_residual=self.params.use_residual)
         return encoder_outputs, encoder_last_states,encoder_inputs_length
 
 
     def create_model(self,input,target_input,target_output,mode='train'):
+        use_beam_search = False
         with tf.variable_scope("attetnion_seq2seq",reuse=tf.AUTO_REUSE):
             embeddings_matrix = self._create_embedding()
 
@@ -59,17 +60,17 @@ class AttentionSeq():
                 # Output projection layer to convert cell_outpus to logits
                 output_layer = Dense(self.params.vocab_size, name='output_project')
                 input_layer = Dense(self.params.hidden_units * 2, dtype=tf.float32, name='input_projection')
-                decoder_cell,decoder_initial_state = build_decoder_cell(encoder_outputs,
-                                                                        encoder_last_states,
-                                                                        encoder_inputs_length,
-                                                                        self.params.depth,
-                                                                        self.params.attention_size,
-                                                                        self.params.hidden_units,
-                                                                        keep_prob,
-                                                                        self.params.use_residual,
-                                                                        mode,
-                                                                        self.params.beam_with,
-                                                                        batch_size)
+                decoder_cell,decoder_initial_state = create_decoder_cell(enc_outputs=encoder_outputs,
+                                                                         enc_states=encoder_last_states,
+                                                                         enc_seq_len=encoder_inputs_length,
+                                                                         num_layers=self.params.depth,
+                                                                         num_units =self.params.hidden_units * 2,
+                                                                         keep_prob=keep_prob,
+                                                                         use_residual=self.params.use_residual,
+                                                                         use_beam_search= use_beam_search,
+                                                                         beam_size=self.params.beam_with,
+                                                                         batch_size=batch_size,
+                                                                         top_attention=self.params.top_attention)
 
                 decoder_inputs_length_train = self.get_setence_length(target_input)
                 # Maximum decoder time_steps in current batch
@@ -81,7 +82,6 @@ class AttentionSeq():
                 decoder_input_embedded = input_layer(decoder_input_embedded)
                 inference_decoder = seq2seq.TrainingHelper(inputs=decoder_input_embedded,
                                                          sequence_length=decoder_inputs_length_train,
-                                                         #sequence_length= self.params.max_seq_length,
                                                          time_major=False,
                                                          name='training_helper')
                 training_decoder = seq2seq.BasicDecoder(cell=decoder_cell,
@@ -109,6 +109,9 @@ class AttentionSeq():
         return loss,predicts
 
     def create_model_predict(self, input,mode='decode'):
+        use_beam_search = False
+        if self.params.beam_with > 1:
+            use_beam_search = True
         with tf.variable_scope("attetnion_seq2seq", reuse=tf.AUTO_REUSE):
             embeddings_matrix = self._create_embedding()
 
@@ -123,17 +126,17 @@ class AttentionSeq():
                 # # Output projection layer to convert cell_outpus to logits
                 output_layer = Dense(self.params.vocab_size, name='output_project')
                 input_layer = Dense(self.params.hidden_units * 2, dtype=tf.float32, name='input_projection')
-                decoder_cell,decoder_initial_state = build_decoder_cell(encoder_outputs,
-                                                                        encoder_last_states,
-                                                                        encoder_inputs_length,
-                                                                        self.params.depth,
-                                                                        self.params.attention_size,
-                                                                        self.params.hidden_units,
-                                                                        keep_prob,
-                                                                        self.params.use_residual,
-                                                                        mode,
-                                                                        self.params.beam_with,
-                                                                        batch_size)
+                decoder_cell,decoder_initial_state = create_decoder_cell(enc_outputs=encoder_outputs,
+                                                                         enc_states=encoder_last_states,
+                                                                         enc_seq_len=encoder_inputs_length,
+                                                                         num_layers=self.params.depth,
+                                                                         num_units =self.params.hidden_units*2,
+                                                                         keep_prob=keep_prob,
+                                                                         use_residual=self.params.use_residual,
+                                                                         use_beam_search= use_beam_search,
+                                                                         beam_size=self.params.beam_with,
+                                                                         batch_size=batch_size,
+                                                                         top_attention=self.params.top_attention)
 
                 # Start_tokens: [batch_size,] `int32` vector
                 start_tokens = tf.ones([batch_size,],tf.int32) * data_utils.GO_ID
