@@ -83,7 +83,7 @@ def train():
             feed_dict = feed_data(*batch,arg.dropout_keep_prob)
             _,batch_loss,batch_acc = sess.run([model.train,model.loss,model.acc],feed_dict=feed_dict)
             total_loss += batch_loss * batch_nums
-            total_acc += batch_loss * batch_nums
+            total_acc += batch_acc * batch_nums
 
             if total_batch % arg.eval_batch == 0:
                 s = sess.run(merged_summary,feed_dict=feed_dict)
