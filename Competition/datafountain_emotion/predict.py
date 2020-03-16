@@ -29,8 +29,8 @@ def get_submit_file():
         fwrite.write("id,y\n")
         for index, example in enumerate(test_examples):
             predict_label = model_loader.predict(example.text_a)
-            fwrite.write("%s,%s\n" % (example.guid,predict_label) )
-            print("预测%s     预测结果为%s" %(example.text_a,predict_label))
+            fwrite.write("%s,%s\n" % (example.guid.strip(),predict_label) )
+            
 
 
 
