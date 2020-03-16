@@ -46,7 +46,7 @@ class DataFountainEmotionProcess(DataProcessor):
 
     def get_labels(self):
         """Gets the list of labels for this data set."""
-        return ["-1","0","1"]
+        return settings.label_list
 
 
 def create_tfrecorf_file():
@@ -73,3 +73,9 @@ def create_tfrecorf_file():
 
 if __name__ == '__main__':
     create_tfrecorf_file()
+    test_string = "##武汉加油##"
+    print(tokenization.convert_to_unicode(test_string))
+    tokenizer = tokenization.FullTokenizer(
+        vocab_file=settings.bert_model_vocab_path, do_lower_case=True)
+    print(tokenizer.tokenize(test_string))
+

@@ -11,6 +11,7 @@ from Competition.datafountain_emotion.data_process import DataFountainEmotionPro
 from utils.bert.tfrecord_utils import file_based_input_fn_builder
 from utils.bert.utils import serving_input_fn,serving_input_receiver_fn
 import os
+from Competition.datafountain_emotion.predict import get_submit_file
 
 def train():
     params = settings.ParamsModel()
@@ -180,4 +181,5 @@ def predict():
 
 if __name__ == '__main__':
     train()
+    get_submit_file()
 

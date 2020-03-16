@@ -35,7 +35,7 @@ class ModelLoader(EstimatorLoader):
         return features
 
     def predict(self,text):
-        features = self.make_input("这是一个测试")
+        features = self.make_input(text)
         result = self.predictor(features)
         predict_label_index = result['predictions'].tolist()[0]
         label = self.label_list[predict_label_index]
@@ -44,10 +44,3 @@ class ModelLoader(EstimatorLoader):
 
 
 
-if __name__ == '__main__':
-    import os
-    dir_path = r'E:\git-project\nlp_research\Competition\datafountain_emotion\output'
-    exported_path = os.path.join(dir_path, "1584178871")
-    model_loader = ModelLoader(exported_path,settings.label_list)
-    features = model_loader.make_input("这是一个测试")
-    print(model_loader.predict(features))

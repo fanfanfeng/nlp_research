@@ -12,9 +12,9 @@ test_origin_data_path = os.path.join(Data_path,"nCov_10k_test.csv")
 train_data_path = os.path.join(Output_path,"train.csv")
 dev_data_path = os.path.join(Output_path,'dev.csv')
 test_data_path = os.path.join(Output_path,'test.csv')
+submit_data_path = os.path.join(Output_path,'submit.csv')
 
-
-label_list = ["0", "1", "-1"]
+label_list = ["-1","0","1"]
 
 train_tfrecord_path = os.path.join(Output_path,'train.tf_record')
 dev_tfrecord_path = os.path.join(Output_path,"dev.tf_record")
@@ -29,11 +29,11 @@ class ParamsModel():
         self.do_train = True
         self.do_eval = True
         self.do_predict = False
-        self.num_train_steps = 3
-        self.warmup_step = 1
-        self.save_checkpoints_steps = 1 #每训练多少步，保存一次模型
-        self.max_steps_without_decrease = 2000 #最大多少步没有提升就退出
-        self.learning_rate = 0.0001
+        self.num_train_steps = 20000
+        self.warmup_step = 200
+        self.save_checkpoints_steps = 400 #每训练多少步，保存一次模型
+        self.max_steps_without_decrease = 20000 #最大多少步没有提升就退出
+        self.learning_rate = 0.00001
         self.use_one_hot_embeddings= False
         self.optimizer = 'adamw'
 
