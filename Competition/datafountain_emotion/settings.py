@@ -3,6 +3,7 @@ import os
 PROJECT_ROOT = os.path.abspath(os.path.dirname(__file__))
 Data_path = os.path.join(PROJECT_ROOT,"data")
 Output_path = os.path.join(PROJECT_ROOT,'output')
+Model_save_path = os.path.join(Output_path,'tf_models')
 
 train_origin_data_path = os.path.join(Data_path,'nCoV_100k_train.labled.csv')
 test_origin_data_path = os.path.join(Data_path,"nCov_10k_test.csv")
@@ -28,15 +29,16 @@ class ParamsModel():
         self.do_train = True
         self.do_eval = True
         self.do_predict = False
-        self.num_train_steps = 10000
-        self.warmup_step = 1000
-        self.save_checkpoints_steps = 200 #每训练多少步，保存一次模型
+        self.num_train_steps = 3
+        self.warmup_step = 1
+        self.save_checkpoints_steps = 1 #每训练多少步，保存一次模型
+        self.max_steps_without_decrease = 2000 #最大多少步没有提升就退出
         self.learning_rate = 0.0001
         self.use_one_hot_embeddings= False
         self.optimizer = 'adamw'
 
 
-        self.train_batch_size = 128
+        self.train_batch_size = 1
         self.buffer_size = self.train_batch_size * 30
 
 

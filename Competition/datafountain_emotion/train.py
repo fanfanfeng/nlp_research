@@ -9,6 +9,7 @@ import tensorflow_estimator as tf_estimator
 from Competition.datafountain_emotion.model_builder import model_fn_builder
 from Competition.datafountain_emotion.data_process import DataFountainEmotionProcess
 from utils.bert.tfrecord_utils import file_based_input_fn_builder
+from utils.bert.utils import serving_input_fn,serving_input_receiver_fn
 import os
 
 def train():
@@ -34,8 +35,7 @@ def train():
     session_conf.gpu_options.allow_growth = True
     session_conf.gpu_options.per_process_gpu_memory_fraction = 0.9
     run_config = tf_estimator.estimator.RunConfig(
-        model_dir=settings.Output_path,
-        save_checkpoints_steps=params.save_checkpoints_steps,
+        model_dir=settings.Model_save_path,
         session_config=session_conf
     )
 
@@ -59,6 +59,22 @@ def train():
     tf.logging.info(" Batch size = %d", params.train_batch_size)
     tf.logging.info(" Num_steps = %d", params.num_train_steps)
 
+    early_stopping_hook = tf_estimator.estimator.experimental.stop_if_no_increase_hook(
+        estimator=estimator,
+        metric_name='eval_loss',
+        max_steps_without_increase= params.max_steps_without_decrease,
+        eval_dir=None,
+        min_steps=0,
+        run_every_secs=None,
+        run_every_steps=params.save_checkpoints_steps
+    )
+
+    # Set up logging for predictions
+    # Log the values in the "Softmax" tensor with label "probabilities"
+    #tensors_to_log = {"probabilities": "softmax_tensor"}
+    #logging_hook = tf.train.LoggingTensorHook(
+    #    tensors=tensors_to_log, every_n_iter=50)
+
     train_input_fn = file_based_input_fn_builder(
         input_file=settings.train_tfrecord_path,
         seq_length=params.max_seq_length,
@@ -67,44 +83,42 @@ def train():
         batch_size=params.train_batch_size,
         buffer_size = params.buffer_size
     )
+    train_spec = tf_estimator.estimator.TrainSpec(
+        input_fn=train_input_fn,
+        max_steps=params.num_train_steps,
+        hooks = [early_stopping_hook]
+    )
 
-    estimator.train(input_fn=train_input_fn,max_steps=params.num_train_steps)
 
-    if params.do_eval:
-        tf.logging.info("**** Running evaluation ****")
-        tf.logging.info(" Batch size = %d", params.train_batch_size)
-        eval_input_fn = file_based_input_fn_builder(
-            input_file=settings.dev_tfrecord_path,
-            seq_length=params.max_seq_length,
-            is_training=False,
-            drop_remainder=False,
-            batch_size=params.train_batch_size,
-            buffer_size=params.buffer_size
-        )
 
-        # evaluate all checkpoints; you can use the checkpoint with the best dev accuarcy
-        steps_and_files = []
-        filenames = tf.gfile.ListDirectory(settings.Output_path)
-        for filename in filenames:
-            if filename.endswith('.index'):
-                ckpt_name = filename[:-6]
-                cur_filename = os.path.join(settings.Output_path, ckpt_name)
-                global_step = int(cur_filename.split("-")[-1])
-                tf.logging.info("Add {} to eval list.".format(cur_filename))
-                steps_and_files.append([global_step, cur_filename])
-        steps_and_files = sorted(steps_and_files, key=lambda x: x[0])
-        output_eval_file = os.path.join(settings.Output_path, 'eval_results_albert_zh.txt')
-        print("output_eval_file:", output_eval_file)
-        tf.logging.info("output_eval_file:" + output_eval_file)
-        with tf.gfile.GFile(output_eval_file, 'w') as writer:
-            for global_step, filename in sorted(steps_and_files, key=lambda x: x[0]):
-                result = estimator.evaluate(input_fn=eval_input_fn, steps=None, checkpoint_path=filename)
+    eval_input_fn = file_based_input_fn_builder(
+        input_file=settings.dev_tfrecord_path,
+        seq_length=params.max_seq_length,
+        is_training=False,
+        drop_remainder=False,
+        batch_size=params.train_batch_size,
+        buffer_size=params.buffer_size
+    )
 
-                tf.logging.info("**** eval results %s *****" % (filename))
-                writer.write('**** eval results %s ****\n' % (filename))
-                for key in sorted(result.keys()):
-                    tf.logging.info(" %s = %s ", key, str(result[key]))
-                    writer.write(" %s= %s \n" % (key, str(result[key])))
+    exporter = tf_estimator.estimator.BestExporter(
+        name="best_exporter",
+        serving_input_receiver_fn=serving_input_receiver_fn,
+        exports_to_keep=5)  # this will keep the 5 best checkpoints
+
+    eval_spec = tf_estimator.estimator.EvalSpec(
+        input_fn=eval_input_fn,
+        exporters=exporter
+    )
+
+
+
+    tf.estimator.train_and_evaluate(estimator,train_spec,eval_spec)
+
+    estimator._export_to_tpu = False
+    estimator.export_savedmodel(settings.Output_path, serving_input_receiver_fn)
+
+
+
 
 
 def predict():
@@ -117,8 +131,7 @@ def predict():
     session_conf.gpu_options.allow_growth = True
     session_conf.gpu_options.per_process_gpu_memory_fraction = 0.9
     run_config = tf_estimator.estimator.RunConfig(
-        model_dir=settings.Output_path,
-        save_checkpoints_steps=params.save_checkpoints_steps,
+        model_dir=settings.Model_save_path,
         session_config=session_conf
     )
 
@@ -138,7 +151,7 @@ def predict():
         config=run_config
     )
 
-    tf.logging.info("**** Running evaluation ****")
+    tf.logging.info("**** Running predict ****")
     predict_input_fn = file_based_input_fn_builder(
         input_file=settings.test_tfrecord_path,
         seq_length=params.max_seq_length,

@@ -64,3 +64,50 @@ def _truncate_seq_pair(tokens_a, tokens_b, max_length):
       tokens_a.pop()
     else:
       tokens_b.pop()
+
+
+
+# 加到结尾
+def serving_input_fn(max_seq_length):
+    label_ids = tf.placeholder(tf.int32, [None], name='label_ids')
+    input_ids = tf.placeholder(tf.int32, [None, max_seq_length], name='input_ids')
+    input_mask = tf.placeholder(tf.int32, [None, max_seq_length], name='input_mask')
+    segment_ids = tf.placeholder(tf.int32, [None, max_seq_length], name='segment_ids')
+    input_fn = tf.estimator.export.build_raw_serving_input_receiver_fn({
+        'label_ids': label_ids,
+        'input_ids': input_ids,
+        'input_mask': input_mask,
+        'segment_ids': segment_ids,
+    })()
+    return input_fn
+
+def serving_input_receiver_fn():
+    """Serving input_fn that builds features from placeholders
+    Returns
+    -------
+    tf.estimator.export.ServingInputReceiver
+    """
+    # feature = InputFeatures(
+    # input_ids=input_ids,
+    # input_mask=input_mask,
+    # segment_ids=segment_ids,
+    # label_ids=label_id,
+    # seq_length = seq_length,
+    # is_real_example=True)
+
+    input_ids = tf.placeholder(dtype=tf.int32, shape=[None, None], name='input_ids')
+    input_mask = tf.placeholder(dtype=tf.int32, shape=[None, None], name='input_mask')
+    segment_ids = tf.placeholder(dtype=tf.int32, shape=[None, None], name='segment_ids')
+    label_ids = tf.placeholder(dtype=tf.int32, shape=[None], name='label_ids')
+    is_real_example = tf.placeholder(dtype=tf.string, shape=[None], name='is_real_example')
+    receiver_tensors = {'input_ids': input_ids,
+                            'input_mask': input_mask,
+                            'segment_ids': segment_ids,
+                            'label_ids':label_ids,
+                            'is_real_example':is_real_example}
+    features = {'input_ids': input_ids,
+                            'input_mask': input_mask,
+                            'segment_ids': segment_ids,
+                            'label_ids':label_ids,
+                            'is_real_example':is_real_example}
+    return tf.estimator.export.ServingInputReceiver(features, receiver_tensors)
