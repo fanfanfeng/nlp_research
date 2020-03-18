@@ -1,4 +1,6 @@
 # create by fanfan on 2020/3/13 0013
+import sys
+sys.path.append(r"/data/python_project/nlp_research")
 from utils.bert.processor import DataProcessor
 from Competition.ai_challenger_2018_sentiment_analysis import settings
 from utils.bert import tokenization
@@ -179,5 +181,5 @@ def make_aspect_array():
     return np.array(total_sentence_char_ids,dtype=np.int64)
 
 if __name__ == '__main__':
-    make_aspect_array()
+    create_tfrecorf_file()
 
