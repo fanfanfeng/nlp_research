@@ -1,17 +1,19 @@
 # create by fanfan on 2019/3/26 0026
 import tensorflow as tf
-import tqdm
-import os
-from sklearn.metrics import f1_score
-from category.tf_models import constant
-from category.tf_models.params import Params
+import third_models.albert_zh.modeling_google as modeling
+import tensorflow_estimator as tf_estimator
+import third_models.albert_zh.optimization as optimization
 
 
 
 
 class BaseClassifyModel(object):
     def __init__(self,params):
-        self.params = params
+        self.num_tags = params.num_tags
+
+        self.vocab_size = params.vocab_size
+        self.embedding_size = params.embedding_size
+        self.dropout = params.dropout
 
 
     def get_setence_length(self, data):
@@ -20,101 +22,155 @@ class BaseClassifyModel(object):
         length = tf.cast(length, tf.int32)
         return length
 
-    def create_model(self,input_x,dropout,already_embedded=False,real_sentence_length=None,need_logit=True):
+    def create_logits(self,input_x,dropout,already_embedded=False,real_sentence_length=None):
         with tf.variable_scope("model_define",reuse=tf.AUTO_REUSE) as scope:
             if already_embedded:
                 input_embeddings = input_x
                 real_sentence_length = real_sentence_length
             else:
                 with tf.variable_scope('embeddings_layer'):
-                    word_embeddings = tf.get_variable('word_embeddings', [self.params.vocab_size, self.params.embedding_size])
+                    word_embeddings = tf.get_variable('word_embeddings', [self.vocab_size, self.embedding_size])
                     input_embeddings = tf.nn.embedding_lookup(word_embeddings, input_x)
                     real_sentence_length = self.get_setence_length(input_x)
 
             with tf.variable_scope('classify_layer'):
                 output_layer = self.classify_layer(input_embeddings,dropout,real_sentence_length)
 
-            if need_logit:
-                with tf.name_scope("output"):
-                    logits = tf.layers.dense(output_layer, self.params.num_tags, )
-            else:
-                logits = output_layer
+
+            with tf.name_scope("output"):
+                logits = tf.layers.dense(output_layer, self.num_tags)
         return logits
 
-    def make_train(self,inputX,inputY):
-        dropout = tf.placeholder_with_default(self.params.dropout_prob,(), name='dropout')
-
-        logits = self.create_model(inputX,dropout)
-        logits = tf.identity(logits,name=constant.OUTPUT_NODE_LOGIT)
-
-        globalStep = tf.Variable(0, name="globalStep", trainable=False)
-        with tf.variable_scope('loss'):
-            loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits,labels=inputY))
-            optimizer = tf.train.AdamOptimizer(self.params.learning_rate)
-
-            grads_and_vars = optimizer.compute_gradients(loss)
-            train_op = optimizer.apply_gradients(grads_and_vars,globalStep)
-
-        predict = tf.argmax(logits,axis=1,output_type=tf.int64,name=constant.OUTPUT_NODE_NAME)
-        accuracy = tf.reduce_mean(tf.cast(tf.equal(predict,inputY),dtype=tf.float32))
-
-
-        with tf.variable_scope('summary'):
-            tf.summary.scalar("loss", loss)
-            tf.summary.scalar("accuracy", accuracy)
-            summary_op = tf.summary.merge_all()
-
-        return loss,globalStep,train_op,summary_op
-
-
-    def make_test(self,inputX,inputY):
-        dropout = tf.placeholder_with_default(1.0,(), name='dropout')
-
-        logits = self.create_model(inputX,dropout)
-        with tf.variable_scope('loss'):
-            loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits,labels=inputY))
-        predict = tf.argmax(logits,axis=1,output_type=tf.int64,name=constant.OUTPUT_NODE_NAME)
-        return loss,predict
-
-
-    def model_restore(self, sess, tf_saver):
-        '''
-        模型恢复或者初始化
-        :param sess: 
-        :param tf_saver: 
-        :return: 
-        '''
-        ckpt = tf.train.get_checkpoint_state(os.path.dirname(self.params.model_path))
-        if ckpt and ckpt.model_checkpoint_path:
-            print("restor model")
-            tf_saver.restore(sess, ckpt.model_checkpoint_path)
-        else:
-            print("init model")
-            sess.run(tf.global_variables_initializer())
 
 
     def classify_layer(self, input_embedding,dropout,real_sentence_length=None):
         """Implementation of specific classify layer"""
-        raise NotImplementedError()
+        return input_embedding
+
+    def loss_layer(self,labels,logits):
+        with tf.variable_scope('loss'):
+            total_loss = tf.reduce_sum(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=labels,logits=logits))
+            mean_loss = tf.reduce_mean(total_loss)
+        return total_loss,mean_loss
+
+    def predict_layer(self,logits):
+        with tf.variable_scope("prediction"):
+            predictions = tf.argmax(logits, axis=-1, output_type=tf.int32)
+            probabilities = tf.nn.softmax(logits, axis=-1)
+        return predictions,probabilities
+
+    def create_model(self,input_ids,labels,is_training,albert_config=None, input_mask=None, segment_ids=None,
+                     use_one_hot_embeddings=False):
+
+        if albert_config != None:
+            model = modeling.AlbertModel(
+                config=albert_config,
+                is_training=is_training,
+                input_ids=input_ids,
+                input_mask=input_mask,
+                token_type_ids=segment_ids,
+                use_one_hot_embeddings=use_one_hot_embeddings)
+
+            tf.logging.info("using pooled output")
+            input_embbed = model.get_pooled_output()
+
+            sentence_len = self.get_setence_length(input_ids)
+            logits = self.create_logits(input_embbed,self.dropout,already_embedded=True,real_sentence_length=sentence_len)
+        else:
+            logits = self.create_logits(input_ids,self.dropout)
 
 
-    @staticmethod
-    def load_model_from_pb(model_path):
-        sess = tf.Session(config=tf.ConfigProto(
-            allow_soft_placement=True,
-            log_device_placement=False
-        ))
-
-        with tf.gfile.GFile(model_path,'rb') as fr:
-            graph_def = tf.GraphDef()
-            graph_def.ParseFromString(fr.read())
-            sess.graph.as_default()
-            tf.import_graph_def(graph_def,name="")
-
-        input_node = sess.graph.get_operation_by_name(constant.INPUT_NODE_NAME).outputs[0]
-        logit_node = sess.graph.get_operation_by_name(constant.OUTPUT_NODE_LOGIT).outputs[0]
-        return sess,input_node,logit_node
+        total_loss,mean_loss = self.loss_layer(logits=logits,labels=labels)
+        predictions, probabilities = self.predict_layer(logits)
+        return (total_loss, mean_loss, probabilities, predictions)
 
 
+
+
+    def create_estimator_fn(self,num_train_steps,num_warmup_steps,learning_rate,albert_config=None,init_checkpoint=None,
+                     use_one_hot_embeddings=False,optimizer='adamw'):
+        """Returns `model_fn` closure for TPUEstimator."""
+
+        def model_fn(features,labels,mode,params):
+            """The `model_fn` for TPUEstimator."""
+            tf.logging.info('*** Features ***')
+            for name in sorted(features.keys()):
+                tf.logging.info(" name = %s ,shape = %s" % (name,features[name].shape))
+
+            is_training = (mode == tf_estimator.estimator.ModeKeys.TRAIN)
+            input_ids = features['input_ids']
+            label_ids = features['label_ids']
+            if albert_config != None:
+                input_mask = features['input_mask']
+                segment_ids = features['segment_ids']
+            else:
+                input_mask = None
+                segment_ids = None
+
+
+
+            (total_loss,per_example_loss,probabilities,predictions) = \
+                self.create_model(input_ids,labels=label_ids,is_training=is_training,
+                                  albert_config=albert_config,input_mask=input_mask,
+                                  segment_ids=segment_ids,use_one_hot_embeddings=use_one_hot_embeddings)
+
+            tvars = tf.trainable_variables()
+
+            if albert_config != None:
+                initialized_variable_names = {}
+                if init_checkpoint:
+                    (assignment_map,initialized_variable_names) = modeling.get_assignment_map_from_checkpoint(tvars,init_checkpoint)
+                    tf.train.init_from_checkpoint(init_checkpoint,assignment_map)
+
+                tf.logging.info("**** Trainable Variables ****")
+                for var in tvars:
+                    init_string = ""
+                    if var.name in initialized_variable_names:
+                        init_string = ", *INIT_FROM_CKPT*"
+                    tf.logging.info("  name = %s, shape = %s%s", var.name, var.shape,
+                                    init_string)
+
+            output_spec = None
+            if mode == tf_estimator.estimator.ModeKeys.TRAIN:
+                train_op = optimization.create_optimizer(total_loss,
+                                                         learning_rate,
+                                                         num_train_steps,
+                                                         num_warmup_steps,use_tpu=False)
+                output_spec = tf_estimator.estimator.EstimatorSpec(
+                    mode=mode,
+                    loss=total_loss,
+                    train_op=train_op,
+                )
+            elif mode == tf_estimator.estimator.ModeKeys.EVAL:
+                def metric_fn(per_example_loss,label_ids,logits):
+                    accuracy = tf.metrics.accuracy(
+                        labels=label_ids,predictions=predictions,
+                    )
+                    loss = tf.metrics.mean(
+                        values=per_example_loss
+                    )
+                    return {
+                        'eval_accuracy':accuracy,
+                        'eval_loss':loss,
+                    }
+
+                eval_metrics = metric_fn(per_example_loss,label_ids,predictions)
+                output_spec = tf_estimator.estimator.EstimatorSpec(
+                    mode=mode,
+                    loss=total_loss,
+                    eval_metric_ops=eval_metrics
+                )
+            else:
+                output_spec = tf_estimator.estimator.EstimatorSpec(
+                    mode=mode,
+                    predictions={
+                        'probabilities':probabilities,
+                        'predictions':predictions,
+                    },
+                )
+
+            return output_spec
+
+        return model_fn
 
 

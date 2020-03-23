@@ -33,13 +33,19 @@ class ParamsModel():
         self.warmup_step = 200
         self.save_checkpoints_steps = 400 #每训练多少步，保存一次模型
         self.max_steps_without_decrease = 20000 #最大多少步没有提升就退出
-        self.learning_rate = 0.00001
+        self.learning_rate = 0.0001
         self.use_one_hot_embeddings= False
         self.optimizer = 'adamw'
 
 
-        self.train_batch_size = 1
+        self.train_batch_size = 256
         self.buffer_size = self.train_batch_size * 30
+
+        self.num_tags = len(label_list)
+
+        self.vocab_size = None
+        self.embedding_size = None
+        self.dropout = 0.8
 
 
 import sys

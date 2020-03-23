@@ -16,6 +16,7 @@ class Config(object):
         self.max_sentence_len = 20
 
         self.model_name="abcnn" # bimpm,esim, paircnn ,abcnn
+        self.vocab_size = 100
 
     @property
     def save_path(self):
