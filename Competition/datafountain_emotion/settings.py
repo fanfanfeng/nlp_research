@@ -24,28 +24,35 @@ test_tfrecord_path = os.path.join(Output_path,'test.tf_record')
 
 class ParamsModel():
     def __init__(self):
-        self.max_seq_length = 256  #句子最大长度
+        self.max_seq_length = 150  #句子最大长度
         self.do_lower_case = True #是否区别大小写
         self.do_train = True
         self.do_eval = True
         self.do_predict = False
         self.num_train_steps = 20000
         self.warmup_step = 200
-        self.save_checkpoints_steps = 400 #每训练多少步，保存一次模型
-        self.max_steps_without_decrease = 20000 #最大多少步没有提升就退出
+        self.save_checkpoints_steps = 300 #每训练多少步，保存一次模型
+        self.max_steps_without_decrease = 2000 #最大多少步没有提升就退出
         self.learning_rate = 0.0001
         self.use_one_hot_embeddings= False
         self.optimizer = 'adamw'
 
 
-        self.train_batch_size = 256
-        self.buffer_size = self.train_batch_size * 30
+        self.train_batch_size = 128
+        self.buffer_size = self.train_batch_size * 300
 
         self.num_tags = len(label_list)
 
         self.vocab_size = None
         self.embedding_size = None
         self.dropout = 0.8
+
+
+        # bi lstm
+        self.hidden_size = 256
+        self.layer_num = 1
+        self.use_attention = True
+        self.attention_size = 256
 
 
 import sys

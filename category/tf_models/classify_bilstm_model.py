@@ -1,30 +1,29 @@
 # create by fanfan on 2019/7/11 0011
 # create by fanfan on 2019/3/26 0026
-from category.tf_models.base_classify_model import BaseClassifyModel
-from category.tf_models import constant
 import tensorflow as tf
-from tensorflow.contrib import layers
-import os
+from category.tf_models.base_classify_model import BaseClassifyModel
 from tensorflow.contrib import rnn
-
-
 
 
 class ClassifyBilstmModel(BaseClassifyModel):
     def __init__(self,params):
         BaseClassifyModel.__init__(self,params)
+        self.hidden_size = params.hidden_size
+        self.layer_num = params.layer_num
+        self.use_attention = params.use_attention
+        self.attention_size = params.attention_size
 
 
     def lstm_cell(self,dropout):
-        lstm_fw = rnn.LSTMCell(self.params.hidden_size)
+        lstm_fw = rnn.LSTMCell(self.hidden_size)
         lstm_fw = rnn.DropoutWrapper(lstm_fw, dropout)
 
         return lstm_fw
 
-    def classify_layer(self, input_embedding,dropout,real_sentence_length):
-        if self.params.layer_num >1:
-            lstm_fw = rnn.MultiRNNCell([self.lstm_cell(dropout) for _ in range(self.params.layer_num)])
-            lstm_bw = rnn.MultiRNNCell([self.lstm_cell(dropout) for _ in range(self.params.layer_num)])
+    def classify_layer(self, input_embedding,dropout,real_sentence_length=None):
+        if self.layer_num >1:
+            lstm_fw = rnn.MultiRNNCell([self.lstm_cell(dropout) for _ in range(self.layer_num)])
+            lstm_bw = rnn.MultiRNNCell([self.lstm_cell(dropout) for _ in range(self.layer_num)])
         else:
             lstm_fw = self.lstm_cell(dropout)
             lstm_bw = self.lstm_cell(dropout)
@@ -33,9 +32,9 @@ class ClassifyBilstmModel(BaseClassifyModel):
         outputs = tf.concat(outputs,axis=2)
 
 
-        if self.params.use_attention == True:
+        if self.use_attention == True:
             with tf.variable_scope('attention_layer'):
-                rnn_attention_outputs = self.attention_layer(outputs, self.params.attention_size)
+                rnn_attention_outputs = self.attention_layer(outputs, self.attention_size)
                 last_output = tf.nn.dropout(rnn_attention_outputs, dropout)
         else:
             last_output = outputs[:, -1, :]

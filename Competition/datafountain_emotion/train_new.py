@@ -5,24 +5,25 @@ import os
 
 
 from Competition.datafountain_emotion import settings
-from Competition.datafountain_emotion.data_process import DataFountainEmotionProcess
 from Competition.datafountain_emotion.predict import get_submit_file
+from Competition.datafountain_emotion.server_placeholder import serving_input_receiver_fn
 
 import tensorflow as tf
 import tensorflow_estimator as tf_estimator
 
 from utils.bert import tokenization
-from utils.bert.utils import serving_input_receiver_fn
 from utils.bert.tfrecord_utils import file_based_input_fn_builder
 import third_models.albert_zh.modeling_google as modeling
 
-from category.tf_models.base_classify_model import BaseClassifyModel
 
+from category.tf_models.classify_bilstm_model import ClassifyBilstmModel
+from category.tf_models.base_classify_model import BaseClassifyModel
 
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
 
 def train():
     params = settings.ParamsModel()
+
     tokenization.validate_case_matches_checkpoint(params.do_lower_case,
                                                   settings.bert_model_init_path)
 
@@ -54,6 +55,7 @@ def train():
         num_train_steps=params.num_train_steps,
         num_warmup_steps=params.warmup_step,
         optimizer=params.optimizer,
+        use_pool=True,
     )
 
     estimator = tf_estimator.estimator.Estimator(
@@ -77,7 +79,7 @@ def train():
 
     # Set up logging for predictions
     # Log the values in the "Softmax" tensor with label "probabilities"
-    tensors_to_log = {"loss": "loss"}
+    tensors_to_log = {"total_loss": "total_loss"}
     logging_hook = tf.train.LoggingTensorHook(
         tensors=tensors_to_log, every_n_iter=100)
 
@@ -120,13 +122,14 @@ def train():
         input_fn=eval_input_fn,
         steps=None,
         exporters=exporter,
-        #    hooks=[logging_hook_eval]
+        start_delay_secs=0,
+        throttle_secs=600,
     )
 
     tf.estimator.train_and_evaluate(estimator, train_spec, eval_spec)
 
-    estimator._export_to_tpu = False
-    estimator.export_savedmodel(settings.Output_path, serving_input_receiver_fn)
+    #estimator._export_to_tpu = False
+    #estimator.export_savedmodel(settings.Output_path, serving_input_receiver_fn)
 
 
 

@@ -48,9 +48,12 @@ class BaseClassifyModel(object):
         return input_embedding
 
     def loss_layer(self,labels,logits):
-        with tf.variable_scope('loss'):
+        with tf.variable_scope('loss_layer'):
             total_loss = tf.reduce_sum(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=labels,logits=logits))
             mean_loss = tf.reduce_mean(total_loss)
+
+        print_loss = tf.identity(total_loss,'total_loss')
+
         return total_loss,mean_loss
 
     def predict_layer(self,logits):
@@ -60,7 +63,7 @@ class BaseClassifyModel(object):
         return predictions,probabilities
 
     def create_model(self,input_ids,labels,is_training,albert_config=None, input_mask=None, segment_ids=None,
-                     use_one_hot_embeddings=False):
+                     use_one_hot_embeddings=False,use_pool=False):
 
         if albert_config != None:
             model = modeling.AlbertModel(
@@ -71,11 +74,14 @@ class BaseClassifyModel(object):
                 token_type_ids=segment_ids,
                 use_one_hot_embeddings=use_one_hot_embeddings)
 
-            tf.logging.info("using pooled output")
-            input_embbed = model.get_pooled_output()
 
-            sentence_len = self.get_setence_length(input_ids)
-            logits = self.create_logits(input_embbed,self.dropout,already_embedded=True,real_sentence_length=sentence_len)
+            if  not use_pool:
+                input_embbed = model.get_sequence_output()
+
+                sentence_len = self.get_setence_length(input_ids)
+                logits = self.create_logits(input_embbed,self.dropout,already_embedded=True,real_sentence_length=sentence_len)
+            else:
+                logits = model.get_pooled_output()
         else:
             logits = self.create_logits(input_ids,self.dropout)
 
@@ -88,7 +94,7 @@ class BaseClassifyModel(object):
 
 
     def create_estimator_fn(self,num_train_steps,num_warmup_steps,learning_rate,albert_config=None,init_checkpoint=None,
-                     use_one_hot_embeddings=False,optimizer='adamw'):
+                     use_one_hot_embeddings=False,optimizer='adamw',use_pool=False):
         """Returns `model_fn` closure for TPUEstimator."""
 
         def model_fn(features,labels,mode,params):
@@ -112,7 +118,8 @@ class BaseClassifyModel(object):
             (total_loss,per_example_loss,probabilities,predictions) = \
                 self.create_model(input_ids,labels=label_ids,is_training=is_training,
                                   albert_config=albert_config,input_mask=input_mask,
-                                  segment_ids=segment_ids,use_one_hot_embeddings=use_one_hot_embeddings)
+                                  segment_ids=segment_ids,use_one_hot_embeddings=use_one_hot_embeddings,
+                                  use_pool=use_pool)
 
             tvars = tf.trainable_variables()
 
