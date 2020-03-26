@@ -66,6 +66,8 @@ class BaseClassifyModel(object):
 
     def create_model(self,input_ids,labels,is_training,albert_config=None, input_mask=None, segment_ids=None,
                      use_one_hot_embeddings=False,use_pool=False):
+        if not is_training:
+            self.dropout = 1.0
 
         if albert_config != None:
             model = modeling.AlbertModel(

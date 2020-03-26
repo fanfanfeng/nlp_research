@@ -5,6 +5,7 @@ from category.tf_models.base_classify_model import BaseClassifyModel
 from tensorflow.contrib import rnn
 
 
+
 class ClassifyBilstmModel(BaseClassifyModel):
     def __init__(self,params):
         BaseClassifyModel.__init__(self,params)
@@ -31,6 +32,7 @@ class ClassifyBilstmModel(BaseClassifyModel):
         outputs, output_states = tf.nn.bidirectional_dynamic_rnn(lstm_fw,lstm_bw,input_embedding,real_sentence_length,dtype=tf.float32)
         outputs = tf.concat(outputs,axis=2)
 
+        outputs = tf.nn.dropout(outputs,keep_prob=dropout)
 
         if self.use_attention == True:
             with tf.variable_scope('attention_layer'):
