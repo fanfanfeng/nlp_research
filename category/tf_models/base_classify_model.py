@@ -45,7 +45,7 @@ class BaseClassifyModel(object):
 
     def classify_layer(self, input_embedding,dropout,real_sentence_length=None):
         """Implementation of specific classify layer"""
-        if len(tf.shape(input_embedding)) >2:
+        if len(input_embedding.shape.as_list()) > 2:
             raise NotImplementedError("classify_layer not implement")
         return input_embedding
 
