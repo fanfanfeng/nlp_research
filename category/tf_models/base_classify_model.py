@@ -45,6 +45,8 @@ class BaseClassifyModel(object):
 
     def classify_layer(self, input_embedding,dropout,real_sentence_length=None):
         """Implementation of specific classify layer"""
+        if len(tf.shape(input_embedding)) >2:
+            raise NotImplementedError("classify_layer not implement")
         return input_embedding
 
     def loss_layer(self,labels,logits):
@@ -77,11 +79,12 @@ class BaseClassifyModel(object):
 
             if  not use_pool:
                 input_embbed = model.get_sequence_output()
-
-                sentence_len = self.get_setence_length(input_ids)
-                logits = self.create_logits(input_embbed,self.dropout,already_embedded=True,real_sentence_length=sentence_len)
             else:
-                logits = model.get_pooled_output()
+                input_embbed = model.get_pooled_output()
+
+            sentence_len = self.get_setence_length(input_ids)
+            logits = self.create_logits(input_embbed,self.dropout,already_embedded=True,real_sentence_length=sentence_len)
+
         else:
             logits = self.create_logits(input_ids,self.dropout)
 
