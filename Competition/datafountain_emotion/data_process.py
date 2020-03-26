@@ -1,4 +1,6 @@
 # create by fanfan on 2020/3/13 0013
+import sys
+sys.path.append(r"/data/python_project/nlp_research")
 from utils.bert.processor import DataProcessor
 from Competition.datafountain_emotion import settings
 from utils.bert import tokenization

@@ -19,7 +19,7 @@ def serving_input_receiver_fn():
     input_ids = tf.placeholder(dtype=tf.int32, shape=[None, param.max_seq_length], name='input_ids')
     input_mask = tf.placeholder(dtype=tf.int32, shape=[None, param.max_seq_length], name='input_mask')
     segment_ids = tf.placeholder(dtype=tf.int32, shape=[None, param.max_seq_length], name='segment_ids')
-    label_ids = tf.placeholder(dtype=tf.int32, name='label_ids')
+    label_ids = tf.placeholder(dtype=tf.int32,shape=[None], name='label_ids')
     receiver_tensors = {'input_ids': input_ids,
                             'input_mask': input_mask,
                             'segment_ids': segment_ids,

@@ -364,9 +364,9 @@ def get_assignment_map_from_checkpoint(tvars, init_checkpoint, num_of_group=0):
       tvar_name = re.sub(r"/attention_\d+/", "/attention_1/",
                          six.ensure_str(name))
     else:
-      tf.logging.info("name %s does not get matched", name)
+      #tf.logging.info("name %s does not get matched", name)
       continue
-    tf.logging.info("name %s match to %s", name, tvar_name)
+    #tf.logging.info("name %s match to %s", name, tvar_name)
     if num_of_group > 0:
       group_matched = False
       for gid in range(1, num_of_group):
@@ -374,7 +374,7 @@ def get_assignment_map_from_checkpoint(tvars, init_checkpoint, num_of_group=0):
             ("/ffn_" + str(gid) + "/" in name) or
             ("/attention_" + str(gid) + "/" in name)):
           group_matched = True
-          tf.logging.info("%s belongs to %dth", name, gid)
+          #tf.logging.info("%s belongs to %dth", name, gid)
           assignment_map[gid][tvar_name] = name
       if not group_matched:
         assignment_map[0][tvar_name] = name
